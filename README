@@ -1,0 +1,23 @@
+# PRS GO 
+
+## Introduciton 
+
+The goal is to implement TCP over UDP protocol.
+
+## Project Structure
+
+Code is available in src folder.
+Executables are in bin folder. 
+
+## Compile for environnements
+
+- env GOOS=windows GOARCH=amd64 go build -o bin/win64/server.exe src/server/server.go  
+- env GOOS=windows GOARCH=386 go build -o bin/win32/server.exe src/server/server.go 
+- env GOOS=linux GOARCH=386 go build -o bin/linux_x32/server src/server/server.go 
+- env GOOS=linux GOARCH=amd64 go build -o bin/linux_x32/server src/server/server.go 
+
+----
+#### Authors
+
++ Alban PRATS [@al26p](https://github.com/al26p/)
++ Matthieu RAUX [@matthrx](https://github.com/matthrx/)
