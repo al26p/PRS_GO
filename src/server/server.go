@@ -1,9 +1,13 @@
 package main
 
-import ("fmt"
+import (
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +26,8 @@ var (
 	portList map[int]void
 	m void
 )
+
+const BufferSize = 1500
 
 func getPort() int {
 	lock.Lock()
@@ -58,6 +64,44 @@ func testPorts(portMin int, portMax int) {
 	}
 }
 
+// https://kgrz.io/reading-files-in-go-an-overview.html
+func readFile(file string) [][]byte{
+	file, _ = regexp.MatchString()
+	absFile, _ := filepath.Abs(file)
+	f, err := os.Open(absFile)
+	if err != nil{
+		fmt.Println("Error while openning", absFile)
+		return nil
+	}
+	defer f.Close()
+	data := make([][]byte, 0)
+	for {
+		d := make([]byte, BufferSize)
+		n, _ := f.Read(d)
+		fmt.Println("Nombre de bytes lus", n)
+		if n == 0{
+			break
+		}
+		if err != nil {
+			if err != io.EOF {
+				fmt.Println(err)
+				return nil
+			}
+			data = append(data, d)
+			break
+		}
+		data = append(data, d)
+	}
+	return data
+}
+
+func sendFile(file string) {
+	data := readFile(file)
+	for i := 0; i < len(data); i++ {
+		fmt.Println("bytes read: ", data[i])
+	}
+}
+
 func handleClient(add net.Addr, port int, c chan int64){
 	defer releasePort(port)
 	pc, err := net.ListenPacket("udp", "0.0.0.0:"+strconv.Itoa(port))
@@ -76,11 +120,11 @@ func handleClient(add net.Addr, port int, c chan int64){
 		fmt.Println("Deleted")
 		return
 	}
-	for ; ; {
+	for {
 		buffer := make([]byte, 1024)
 		_, _, err = pc.ReadFrom(buffer)
 		fmt.Println("handle", port, add, "\n", string(buffer))
-		fmt.Println(buffer)
+		sendFile(string(buffer))
 		if strings.Contains(string(buffer), "FIN"){
 			return
 		}
@@ -110,7 +154,7 @@ func main(){
 	}
 	defer pc.Close()
 
-	for ; ; {
+	for {
 		fmt.Println("ACK waiting :", len(addrWait))
 		buffer := make([]byte, 1024)
 		_, addr, err := pc.ReadFrom(buffer)
