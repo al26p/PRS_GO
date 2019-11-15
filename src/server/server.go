@@ -26,7 +26,7 @@ var (
 	m void
 )
 
-const BufferSize = 1496
+const BufferSize = 1494
 
 func getPort() int {
 	lock.Lock()
@@ -79,7 +79,6 @@ func readFile(file string) [][]byte{
 		d := make([]byte, BufferSize)
 		n, _ := f.Read(d)
 		//fmt.Println("Nombre de bytes lus", n)
-
 		if n == 0{
 			break
 		}
@@ -96,13 +95,14 @@ func readFile(file string) [][]byte{
 	return data
 }
 
-func sendFile(file string) {
+func sendFile(file string, pc net.PacketConn) {
 	data := readFile(file)
 	bytes := 0
 	for i := 0; i < len(data); i++ {
 		bytes += len(data[i])
 	}
 	fmt.Println("Nombre de bytes lus :", bytes)
+
 }
 
 func handleClient(add net.Addr, port int, c chan int64){
@@ -127,7 +127,8 @@ func handleClient(add net.Addr, port int, c chan int64){
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
 		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
-		sendFile(string(buffer[:n-1]))
+		sendFile(string(buffer[:n-1]), pc)
+		//pc.WriteTo([]byte("SYN-ACK"+strconv.Itoa(p)), addr)
 		if strings.Contains(string(buffer), "FIN"){
 			return
 		}
