@@ -26,7 +26,7 @@ var (
 	m void
 )
 
-const BufferSize = 1496
+const BufferSize = 1494
 
 func getPort() int {
 	lock.Lock()
@@ -64,49 +64,84 @@ func testPorts(portMin int, portMax int) {
 }
 
 // https://kgrz.io/reading-files-in-go-an-overview.html
-func readFile(file string) [][]byte{
+func readFile(file string) ([][]byte, int){
 	//file, _ = regexp.MatchString()
 	//file = "coucou "
 	absFile, _ := filepath.Abs(file)
 	f, err := os.Open(absFile)
 	if err != nil{
 		fmt.Println("Error while openning", absFile)
-		return nil
+		return nil, 0
 	}
 	defer f.Close()
 	data := make([][]byte, 0)
+	n := 0
+	m := 0
 	for {
 		d := make([]byte, BufferSize)
-		n, _ := f.Read(d)
+		n, _ = f.Read(d)
 		//fmt.Println("Nombre de bytes lus", n)
-
 		if n == 0{
 			break
 		}
+		m = n
 		if err != nil {
 			if err != io.EOF {
 				fmt.Println(err)
-				return nil
+				return nil, 0
 			}
 			data = append(data, d)
 			break
 		}
 		data = append(data, d)
 	}
-	return data
+	return data, m
 }
 
-func sendFile(file string) {
-	data := readFile(file)
-	bytes := 0
-	for i := 0; i < len(data); i++ {
-		bytes += len(data[i])
+func readpc(pc net.PacketConn, ch chan string){
+	for{
+		buffer := make([]byte, 100)
+		n,_,_ := pc.ReadFrom(buffer)
+		ch <- string(buffer[:n])
 	}
+}
+
+func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
+	data, last_len := readFile(file)
+	bytes, seqn0 := 0, 000001
+	ch := make(chan string)
+	go readpc(pc, ch)
+	for i := 0; i < len(data); i++ {
+		//toSend := make([]byte, 1500)
+		bs := fmt.Sprintf("%06d", seqn0)
+		for {
+			if (i == len(data)-1){
+				fmt.Println("last len", last_len)
+				data[i] = data[i][:last_len]
+			}
+			toSend := append([]byte(bs), data[i]...)
+			pc.WriteTo(toSend, add)
+			sbuffer := ""
+			select{
+			case <- time.After(1*time.Second):
+					sbuffer = "erreur"
+				case sbuffer = <- ch:
+			}
+			if(strings.Contains(sbuffer, bs)){
+				break
+			}
+		}
+		bytes += len(data[i])
+		seqn0 ++
+	}
+	pc.WriteTo([]byte("FIN"), add)
 	fmt.Println("Nombre de bytes lus :", bytes)
+	return true
 }
 
 func handleClient(add net.Addr, port int, c chan int64){
 	defer releasePort(port)
+	defer fmt.Println("FIN Transmission")
 	pc, err := net.ListenPacket("udp", "0.0.0.0:"+strconv.Itoa(port))
 	if err != nil {
 		log.Fatal(err)
@@ -127,12 +162,10 @@ func handleClient(add net.Addr, port int, c chan int64){
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
 		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
-		sendFile(string(buffer[:n-1]))
-		if strings.Contains(string(buffer), "FIN"){
-			return
+		if sendFile(string(buffer[:n-1]), pc, add){
+			break
 		}
 	}
-
 }
 
 func main(){
