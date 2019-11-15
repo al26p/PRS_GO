@@ -26,7 +26,7 @@ var (
 	m void
 )
 
-const BufferSize = 1500
+const BufferSize = 1496
 
 func getPort() int {
 	lock.Lock()
@@ -66,6 +66,7 @@ func testPorts(portMin int, portMax int) {
 // https://kgrz.io/reading-files-in-go-an-overview.html
 func readFile(file string) [][]byte{
 	//file, _ = regexp.MatchString()
+	//file = "coucou "
 	absFile, _ := filepath.Abs(file)
 	f, err := os.Open(absFile)
 	if err != nil{
@@ -77,7 +78,8 @@ func readFile(file string) [][]byte{
 	for {
 		d := make([]byte, BufferSize)
 		n, _ := f.Read(d)
-		fmt.Println("Nombre de bytes lus", n)
+		//fmt.Println("Nombre de bytes lus", n)
+
 		if n == 0{
 			break
 		}
@@ -96,9 +98,11 @@ func readFile(file string) [][]byte{
 
 func sendFile(file string) {
 	data := readFile(file)
+	bytes := 0
 	for i := 0; i < len(data); i++ {
-		fmt.Println("bytes read: ", data[i])
+		bytes += len(data[i])
 	}
+	fmt.Println("Nombre de bytes lus :", bytes)
 }
 
 func handleClient(add net.Addr, port int, c chan int64){
@@ -121,9 +125,9 @@ func handleClient(add net.Addr, port int, c chan int64){
 	}
 	for {
 		buffer := make([]byte, 1024)
-		_, _, err = pc.ReadFrom(buffer)
-		fmt.Println("handle", port, add, "\n", string(buffer))
-		sendFile(string(buffer))
+		n, _, _ := pc.ReadFrom(buffer)
+		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
+		sendFile(string(buffer[:n-1]))
 		if strings.Contains(string(buffer), "FIN"){
 			return
 		}
