@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -66,7 +65,7 @@ func testPorts(portMin int, portMax int) {
 
 // https://kgrz.io/reading-files-in-go-an-overview.html
 func readFile(file string) [][]byte{
-	file, _ = regexp.MatchString()
+	//file, _ = regexp.MatchString()
 	absFile, _ := filepath.Abs(file)
 	f, err := os.Open(absFile)
 	if err != nil{
