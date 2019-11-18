@@ -25,8 +25,9 @@ var (
 	portList map[int]void
 	m void
 )
-
-const BufferSize = 1494
+//frames : 1496
+//JumboFrames : 8996
+const BufferSize = 8996
 
 func getPort() int {
 	lock.Lock()
@@ -106,7 +107,7 @@ func readpc(pc net.PacketConn, ch chan string){
 	}
 }
 
-func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
+func sendFile(file string, pc net.PacketConn, add net.Addr, rtt int64) bool {
 	data, last_len := readFile(file)
 	bytes, seqn0 := 0, 000001
 	ch := make(chan string)
@@ -123,7 +124,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 			pc.WriteTo(toSend, add)
 			sbuffer := ""
 			select{
-			case <- time.After(1*time.Second):
+			case <- time.After(time.Duration(rtt+50000)*time.Nanosecond):
 					sbuffer = "erreur"
 				case sbuffer = <- ch:
 			}
@@ -147,8 +148,9 @@ func handleClient(add net.Addr, port int, c chan int64){
 		log.Fatal(err)
 	}
 	defer pc.Close()
+	var rtt int64
 	select {
-	case rtt :=<-c:
+	case rtt =<-c:
 		fmt.Println("ok - RTT", rtt, "ns (1ms = 1 000 000ns)")
 		if rtt == 0 {
 			fmt.Println("Deleted")
@@ -162,7 +164,11 @@ func handleClient(add net.Addr, port int, c chan int64){
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
 		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
-		if sendFile(string(buffer[:n-1]), pc, add){
+		start := time.Now()
+		var t time.Time
+		if sendFile(string(buffer[:n-1]), pc, add, rtt){
+			t = time.Now()
+			fmt.Println("Duration of transfer : ", t.Sub(start))
 			break
 		}
 	}
