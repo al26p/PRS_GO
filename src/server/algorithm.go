@@ -78,21 +78,6 @@ func cwnd_evolution (flag int, seq_failed ...int){
 // Define function that will increase cmd
 
 func main() {
-		cwnd_evolution(0);
-		fmt.Println(cwnd)
-		cwnd_evolution(0);
-		fmt.Println(cwnd)
-		// cwnd_evolution(1, 2);
-		fmt.Println(cwnd)
-		cwnd_evolution(0);
-		fmt.Println(cwnd);
-		cwnd_evolution(0);
-		cwnd_evolution(0);
-		cwnd_evolution(0);
-		cwnd_evolution(0);
-		cwnd_evolution(0);									
-		cwnd_evolution(0);
-		fmt.Println(cwnd);
-															
+		// Test functions														
 		fmt.Println("Fin programme")
 }
