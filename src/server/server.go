@@ -21,6 +21,7 @@ type waitParam struct {
 }
 
 var (
+	flock sync.Mutex
 	lock sync.Mutex
 	portList map[int]void
 	m void
@@ -70,6 +71,8 @@ func testPorts(portMin int, portMax int) {
 func readFile(file string) ([][]byte, int){
 	//file, _ = regexp.MatchString()
 	//file = "coucou "
+	flock.Lock()
+	defer flock.Unlock()
 	absFile, _ := filepath.Abs(file)
 	f, err := os.Open(absFile)
 	if err != nil{
