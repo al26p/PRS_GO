@@ -27,7 +27,7 @@ var (
 )
 //frames : 1496
 //JumboFrames : 8996
-const BufferSize = 8996
+const BufferSize = 1496
 
 func getPort() int {
 	lock.Lock()
@@ -37,13 +37,15 @@ func getPort() int {
 		return k
 	}
 	fmt.Println("Plus de ports disponibles")
-	return 0
+	return -1
 }
 
 func releasePort(port int) {
-	lock.Lock()
-	defer lock.Unlock()
-	portList[port] = m
+	if port < 0 {
+		lock.Lock()
+		defer lock.Unlock()
+		portList[port] = m
+	}
 }
 
 func testPort(p int) int {
@@ -209,7 +211,7 @@ func main(){
 		if strings.Contains(in, "SYN") {
 			for k, v := range addrWait{
 				fmt.Println(k,time.Now().UnixNano()-  v.toa )
-				if time.Now().UnixNano() - v.toa > 1000000000{
+				if time.Now().UnixNano() - v.toa > 1000000000 {
 					fmt.Println("Deleting", k)
 					close(v.c)
 					delete(addrWait, k)
