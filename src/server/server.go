@@ -20,6 +20,11 @@ type waitParam struct {
 	c chan int64
 }
 
+type ack struct {
+	n string
+	toa int64
+}
+
 var (
 	flock sync.Mutex
 	lock sync.Mutex
@@ -104,19 +109,70 @@ func readFile(file string) ([][]byte, int){
 	return data, m
 }
 
-func readpc(pc net.PacketConn, ch chan string){
+func readpc(pc net.PacketConn, ch chan ack, end chan bool){
+	defer close(ch)
+	var w8b1th3s []ack
 	for{
+		select {
+		case <- end:
+			return
+		default:
+
+		}
 		buffer := make([]byte, 100)
 		n,_,_ := pc.ReadFrom(buffer)
-		ch <- string(buffer[:n])
+		a := ack{
+			n: string(buffer[:n]),
+			toa: time.Now().UnixNano(),
+		}
+
+		var ok bool
+		if len(w8b1th3s) > 0 {
+			ok = true
+			for (ok && len(w8b1th3s) > 0){
+				i := 0;
+				select{
+				case ch <- w8b1th3s[i]:
+					ok = true
+					// Reduce slice
+					copy(w8b1th3s[i:], w8b1th3s[i+1:])
+					w8b1th3s[len(w8b1th3s)-1] = ack{n: "", toa: 0}
+					w8b1th3s = w8b1th3s[:len(w8b1th3s)-1]
+				default:
+					ok = false
+				}
+			}
+			if !ok {
+				w8b1th3s = append(w8b1th3s, a)
+				continue
+			}
+		}
+		select{
+		case ch <- a:
+			ok = true
+		default:
+			ok = false
+			w8b1th3s = append(w8b1th3s, a)
+			fmt.Println("w8 len", len(w8b1th3s), ok)
+		}
 	}
 }
+func end(e chan bool) {
+	e <- true
+}
+// func update_rtt(new_measure float64) {
+// 	RTTVAR = (1-beta)*RTTVAR + beta*math.Abs(SRTT-new_measure)
+// 	SRTT = (1-alpha)*SRTT + alpha*new_measure
+// 	RTO = SRTT + math.Max(granularity, K*RTTVAR)
+// }
 
 func sendFile(file string, pc net.PacketConn, add net.Addr, rtt int64) bool {
 	data, last_len := readFile(file)
 	bytes, seqn0 := 0, 000001
-	ch := make(chan string)
-	go readpc(pc, ch)
+	ch := make(chan ack, 1000)
+	en := make(chan bool)
+	go readpc(pc, ch, en)
+	defer end(en)
 	for i := 0; i < len(data); i++ {
 		//toSend := make([]byte, 1500)
 		bs := fmt.Sprintf("%06d", seqn0)
@@ -128,10 +184,12 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, rtt int64) bool {
 			toSend := append([]byte(bs), data[i]...)
 			pc.WriteTo(toSend, add)
 			sbuffer := ""
+			var tmp ack
 			select{
 			case <- time.After(time.Duration(rtt+50000)*time.Nanosecond):
 					sbuffer = "erreur"
-				case sbuffer = <- ch:
+				case tmp = <- ch:
+					sbuffer = tmp.n
 			}
 			if(strings.Contains(sbuffer, bs)){
 				break
