@@ -41,7 +41,7 @@ func getPort() int {
 }
 
 func releasePort(port int) {
-	if port < 0 {
+	if port > 0 {
 		lock.Lock()
 		defer lock.Unlock()
 		portList[port] = m
@@ -190,7 +190,7 @@ func main(){
 	testPorts(1000,9999)
 	fmt.Println("Initial portList has been set")
 
-	fmt.Println("Launching server")
+	fmt.Println("Launching servern, on port", port)
 
 	pc, err := net.ListenPacket("udp", "0.0.0.0:"+port)
 	if err != nil {
