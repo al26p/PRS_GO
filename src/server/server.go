@@ -170,7 +170,7 @@ func handleClient(add net.Addr, port int, c chan int64){
 		var t time.Time
 		if sendFile(string(buffer[:n-1]), pc, add, rtt){
 			t = time.Now()
-			fmt.Println("Duration of transfer : ", t.Sub(start))
+			fmt.Println("file ", string(buffer), "\n Duration of transfer : ", t.Sub(start))
 			break
 		}
 	}
