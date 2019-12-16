@@ -39,8 +39,7 @@ var (
 )
 
 const BufferSize = 1494
-var cwnd int = 10
-var congestion_type = "SS" // SS or CA (Congestion Avoidance)
+
 const attenuation_coefficient float32 = 0.5
 const incrementation_ca = 1
 
@@ -53,10 +52,25 @@ const beta = 1/4 // (RFC6298)
 const granularity = 1// granularity of the clock we'll use (think that time library works in ms)
 const K = 4 // (RFC6298)
 
-// R must be a float otherwise change it !
-var SRTT = R //array for each client ?
-var RTTVAR = R/2 // Estimate the potential variation of the RTT
-var RTO = SRTT + math.Max(granularity, K*RTTVAR)
+type conn_param struct {
+	SRTT int64
+	RTTVAR int64
+	RRTO int64
+	cwnd int
+	congestion_type string
+}
+
+func NewConn_param (r int64) conn_param {
+	r = 0
+	cp := conn_param{
+		SRTT: r,
+		RTTVAR: r/2,
+		RTO: SRTT + math.Max(granularity, K*RTTVAR),
+		cwnd: 1,
+		congestion_type: "SS",
+	}
+	return cp
+}
 
 
 func getPort() int {
@@ -94,47 +108,48 @@ func testPorts(portMin int, portMax int) {
 	}
 }
 
-func update_time_mesure(new_measure float64) {
-	RTTVAR = (1-beta)*RTTVAR + beta*math.Abs(SRTT-new_measure)
-	SRTT = (1-alpha)*SRTT + alpha*new_measure
-	RTO = SRTT + math.Max(granularity, K*RTTVAR)
+func update_time_mesure(new_measure int64, cp conn_param) {
+	cp.RTTVAR = (1-beta)*RTTVAR + beta*math.Abs(SRTT-new_measure)
+	cp.SRTT = (1-alpha)*SRTT + alpha*new_measure
+	cp.RTO = SRTT + math.Max(granularity, K*RTTVAR)
 }
 
 
-func cwnd_evolution (flag int, seq_failed ...int){
+func cwnd_evolution (flag int, seq_failed int, cp conn_param){
 	/*
-		Function that will deal with the evolution of our congestion window and 
-		that will handle the switch from slow start to congestion avoidance and 
+		Function that will deal with the evolution of our congestion window and
+		that will handle the switch from slow start to congestion avoidance and
 		so recalculate our new cwnd
 
 		flag : indicates whether there was an error (ACK not received) in a RTO
 
 		---- 0 => everything received
-		---- 1 => error 
+		---- 1 => error
 
 		AIMD implementation
-	*/	
+	*/
+	fmt.Println("Evolution of cwnd")
 	switch flag {
 		case 0:
-			switch congestion_type{
+			switch cp.congestion_type{
 				case "SS":
-					cwnd *= 2
+					cp.cwnd *= 2
 				case "CA":
-					cwnd += incrementation_ca	
+					cp.cwnd += incrementation_ca
 			}
 		case 1:
 			switch congestion_type{
 					case "SS":
-						if (len(seq_failed) > 0){
-								cwnd = int(float32(cwnd+seq_failed[0])*attenuation_coefficient)+1
-								congestion_type="CA"
+						if (seq_failed > 0){
+								cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1 //index ?
+								cp.congestion_type="CA"
 							}
 					case "CA":
-						cwnd = int(float32(cwnd)*attenuation_coefficient)+1
+						cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1
 
 					default:
-						RTO*=2
-						fmt.Println("Congestion => increase RTO (by 2)")	
+						cp.RTO*=2
+						fmt.Println("Congestion => increase RTO (by 2)")
 				}
 
 	}
@@ -179,43 +194,48 @@ func readpc(pc net.PacketConn, ch chan ack){
 	for{
 		buffer := make([]byte, 100)
 		n,_,_ := pc.ReadFrom(buffer)
-		a := ack{
-			n: string(buffer[:n]),
-			toa : time.Now().UnixNano(),
-		}
-		ch
+		if (n > 0){
+		ch <- ack{string(buffer[:n-1]),time.Now().UnixNano()}
+	}
 	}
 }
 
-func remove(slice []int, s int) []int {
+/*func remove(slice []int, s int) []int {
     return append(slice[:s], slice[s+1:]...)
 }
+*/
 
 func contains_find(a []ack_list, x string) (bool,int) {
-        for i, n := range a {
-                if x == n.value {
-                        return true,i
-                }
+				for i, n := range a {
+          if strings.Compare(x,n.value) == 0 {
+              return true,i
+          }
         }
         return false,0
 }
 
 func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 	data, last_len := readFile(file) // data : array of data size of buffer
-	bytes, seqn0,i := 0, 000001, 0
+	fmt.Println("Data longeur ",len(data))
+	seqn0, i := 000001, 0
 	ch := make(chan ack, 1000)
 	go readpc(pc, ch)
 	var ack_array []ack_list // Initial array with all expected ACKs
-	elt_list := ack_list{0,""}
 
 	for i < len(data){
-		for j := 0; j < cwnd - len(ack_array); j++{ 
+		real_size := cwnd - len(ack_array)
+		fmt.Println("Taille de la fenêtre ", cwnd)
+		for j := 0; j < real_size; j++{
 			//toSend := make([]byte, 1500)
+			fmt.Println(cwnd - len(ack_array))
+
 			bs := fmt.Sprintf("%06d", seqn0)
 			elt_list := ack_list{i,bs}
-			ack_array = append(ack_array, elt_list); // configure all elements to send + to send again
-			if (i == len(data)-1){
+			ack_array = append(ack_array, elt_list) // configure all elements to send + to send again
+			if (i == len(data)-1){ // ?
 				data[i] = data[i][:last_len]
+				i ++
+				break
 			}
 			seqn0 ++
 			i ++
@@ -223,6 +243,8 @@ func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 		}
 
 		for _, elt := range ack_array {
+			fmt.Println("Sending...")
+			fmt.Println(elt.index)
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			pc.WriteTo(toSend, add)
 				/*sbuffer := ""
@@ -239,29 +261,34 @@ func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 		for {
 			if (len(ack_array) == 0){
 				fmt.Println("All ACK expected were received")
-				cwnd_evolution(0,)
+				cwnd_evolution(0,-1)
 				break
 			}
 			select{
 				// case timeout to handle
-				case ack_buffer, content := <- ch: // content => buffer empty
-					exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
-
-					if content == false {
+				case ack_buffer, content := <- ch: // content false => buffer empty
+				 fmt.Println("Data from channel...")
+				 fmt.Println("Content or no longer content ?")
+				 fmt.Println("Waiting from ACKs")
+				 fmt.Println(ack_array)
+				 fmt.Println(ack_buffer.n[3:])
+				 exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
+				 // fmt.Println(exists)
+					if (content == false && len(ack_array) != 0){
+						fmt.Print("Error was found, should resend")
+						i = index
 						cwnd_evolution(1, index)
 						break
 					}
 					if (exists){
 						ack_array = ack_array[index+1:]
-					}						
+					}
 			}
 		}
 
 		}
-		bytes += len(data[i])
-	
+	fmt.Println("Fin d'envoi")
 	pc.WriteTo([]byte("FIN"), add)
-	fmt.Println("Nombre de bytes lus :", bytes)
 	return true
 }
 
@@ -274,17 +301,20 @@ func handleClient(add net.Addr, port int, c chan int64){
 		log.Fatal(err)
 	}
 	defer pc.Close()
+	var rtt int64
 	select {
-	case rtt :=<-c:
+	case rtt =<-c:
 		fmt.Println("ok - RTT", rtt, "ns (1ms = 1 000 000ns)")
 		if rtt == 0 {
 			fmt.Println("Deleted")
 			return
 		}
+
 	case <- time.After(10 * time.Second):
 		fmt.Println("Deleted")
 		return
 	}
+	cp := NewConn_param(rtt)
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
