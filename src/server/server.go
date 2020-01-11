@@ -144,7 +144,8 @@ func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 						if (seq_failed > 0){
 								cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1 //index ?
 								cp.congestion_type="CA"
-							}
+							}				// case timeout to handle
+
 					case "CA":
 						cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1
 
@@ -224,6 +225,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	go readpc(pc, ch)
 	var ack_array []ack_list // Initial array with all expected ACKs
 	var next_id = 0
+	backoff := 1 //backoff when timing out
 	for i < len(data){
 		fmt.Println("Taille de la fenêtre ", *cp)
 		for j := 0; j < cp.cwnd; j++{
@@ -231,21 +233,23 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			bs := fmt.Sprintf("%06d", seqn0)
 			elt_list := ack_list{i,bs}
 			ack_array = append(ack_array, elt_list) // configure all elements to send + to send again
-			if (i == len(data)-1){ // ?
+
+			if (i == len(data)-1){ // si dermier packet à envoyer
 				data[i] = data[i][:last_len]
+				seqn0 ++
 				i ++
 				break
 			}
 			seqn0 ++
 			i ++
-
 		}
 
-		for _, elt := range ack_array {
-			fmt.Println("Sending...")
-			fmt.Println(elt.index)
+		for _, elt := range ack_array { //for each in batch
+			fmt.Println("Sending", elt.index, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			pc.WriteTo(toSend, add)
+			//TODO : trace when sendend to know when timeouts
+
 				/*sbuffer := ""
 				select{
 				case <- time.After(1*time.Second):
@@ -257,26 +261,29 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 				}
 				*/
 			}
-		for {
-			if (len(ack_array) == 0){
+
+		for { //Checking ACKs loop
+			exit := 0
+			if (len(ack_array) == 0){ //Ya R, what is done is done
 				fmt.Println("All ACK expected were received")
 				cwnd_evolution(0,-1, cp)
 				break
 			}
 			select{
-				// case timeout to handle
 				case ack_buffer, content := <- ch: // content false => buffer empty
-				 fmt.Println("Data from channel...")
-				 fmt.Println("Content or no longer content ?")
-				 fmt.Println("Waiting from ACKs")
+				backoff = 1 //resetting backoff value
+				 fmt.Println("Getting data from channel")
+				 fmt.Println("Content or no longer content ?", content)
+				 fmt.Println("Waiting from ACKs :")
 				 fmt.Println(ack_array)
-				 fmt.Println(ack_buffer.n[3:])
+				 fmt.Println("Trading with ACK", ack_buffer.n[3:]) //ACK be like ACK000124 so [3:]
 				 exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
 				 // fmt.Println(exists)
 					if (content == false && len(ack_array) != 0){
 						fmt.Print("Error was found, should resend")
 						i = index
 						cwnd_evolution(1, index, cp)
+						exit = 1
 						break
 					}
 
@@ -304,9 +311,22 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 						ack_array = ack_array[index+1:]
 						last_ack = ack_buffer.n
 					}
+				//case <- time.After(math.Round(cp.RTO * time.Second): //First etch of timeout
+				case <- time.After(2 * time.Second):
+					fmt.Println("Timed out")
+//					cwnd_evolution(1, ack_array[:0].index, cp)
+					cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
+					backoff ++
+					//todo append thing to send
+					exit = 1
+					break
+			}
+			if (exit == 1){
+				break
 			}
 		}}
 
+	}
 	fmt.Println("Fin d'envoi")
 	pc.WriteTo([]byte("FIN"), add)
 	return true

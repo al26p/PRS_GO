@@ -1,0 +1,22 @@
+VirtualBox VM 5.2.18_SUSE r123745 linux.amd64 (Aug 16 2018 12:00:00) release log
+00:00:01.239467 Log opened 2018-10-22T15:09:20.277395000Z
+00:00:01.239469 Build Type: release
+00:00:01.239471 OS Product: Linux
+00:00:01.239472 OS Release: 4.12.14-lp150.12.16-default
+00:00:01.239474 OS Version: #1 SMP Tue Aug 14 17:51:27 UTC 2018 (28574e6)
+00:00:01.239489 DMI Product Name: Precision Tower 3620
+00:00:01.239496 DMI Product Version: 
+00:00:01.239528 Host RAM: 7861MB (7.6GB) total, 4213MB (4.1GB) available
+00:00:01.239531 Executable: /usr/lib/virtualbox/VirtualBox
+00:00:01.239531 Process ID: 9443
+00:00:01.239532 Package type: LINUX_64BITS_GENERIC (OSE)
+00:00:01.241443 Installed Extension Packs:
+00:00:01.241448   Oracle VM VirtualBox Extension Pack (Version: 5.2.18 r124319; VRDE Module: VBoxVRDP)
+00:00:01.242017 Console: Machine state changed to 'Starting'
+00:00:01.250137 Qt version: 5.9.4
+00:00:01.250142 X11 Window Manager code: 6
+00:00:01.259979 GUI: UIMediumEnumerator: Medium-enumeration finished!
+00:00:01.262428 X Server details: vendor: The X.Org Foundation, release: 11906000, protocol version: 11.0, display string: :1.0
+00:00:01.262434 Using XKB for keycode to scan code conversion
+00:00:01.263814 GUI: UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated: Screen 0 work area is actually resized to: 0x0 x 1920x1055
+00:00:01.302918 SUP: Loaded VMMR0.r0 (/usr/lib/virtualbox/VMMR0.r0) at 0xXXXXXXXXXXXXXXXX - ModuleInit at XXXXXXXXXXXXXXXX and ModuleTerm at XX
