@@ -15,15 +15,15 @@ import (
 )
 
 type void struct {}
+// clients en attente de connexion
+type waitParam struct {
+	toa int64
+	c chan int64
+}
 
 type ack struct{
 	n string
 	toa int64
-}
-
-type waitParam struct {
-	toa int64
-	c chan int64
 }
 
 type ack_list struct {
@@ -44,7 +44,7 @@ var congestion_type = "SS" // SS or CA (Congestion Avoidance)
 const attenuation_coefficient float32 = 0.5
 const incrementation_ca = 1
 
-// Potential RTT/RTO/SRTT evolution
+// Potential RTT/RTO/SRTT evolution TODO: Doit il rester à 0 ?
 const R = 0.0
 // real initization will be done after first handshake (SYN-ACK -> ACK) will be the R variable (in ms)
 
@@ -67,7 +67,7 @@ func getPort() int {
 		return k
 	}
 	fmt.Println("Plus de ports disponibles")
-	return 0
+	return -1
 }
 
 func releasePort(port int) {
@@ -100,27 +100,26 @@ func update_time_mesure(new_measure float64) {
 	RTO = SRTT + math.Max(granularity, K*RTTVAR)
 }
 
-
 func cwnd_evolution (flag int, seq_failed ...int){
 	/*
-		Function that will deal with the evolution of our congestion window and 
-		that will handle the switch from slow start to congestion avoidance and 
+		Function that will deal with the evolution of our congestion window and
+		that will handle the switch from slow start to congestion avoidance and
 		so recalculate our new cwnd
 
 		flag : indicates whether there was an error (ACK not received) in a RTO
 
 		---- 0 => everything received
-		---- 1 => error 
+		---- 1 => error
 
 		AIMD implementation
-	*/	
+	*/
 	switch flag {
 		case 0:
 			switch congestion_type{
 				case "SS":
 					cwnd *= 2
 				case "CA":
-					cwnd += incrementation_ca	
+					cwnd += incrementation_ca
 			}
 		case 1:
 			switch congestion_type{
@@ -134,7 +133,7 @@ func cwnd_evolution (flag int, seq_failed ...int){
 
 					default:
 						RTO*=2
-						fmt.Println("Congestion => increase RTO (by 2)")	
+						fmt.Println("Congestion => increase RTO (by 2)")
 				}
 
 	}
@@ -175,16 +174,57 @@ func readFile(file string) ([][]byte, int){
 	return data, m
 }
 
-func readpc(pc net.PacketConn, ch chan ack){
+func readpc(pc net.PacketConn, ch chan ack, end chan bool){
+	defer close(ch)
+	var w8b1th3s []ack
 	for{
+		select {
+		case <- end:
+			return
+		default:
+
+		}
 		buffer := make([]byte, 100)
 		n,_,_ := pc.ReadFrom(buffer)
 		a := ack{
 			n: string(buffer[:n]),
-			toa : time.Now().UnixNano(),
+			toa: time.Now().UnixNano(),
 		}
-		ch
+
+		var ok bool
+		if len(w8b1th3s) > 0 {
+			ok = true
+			for (ok && len(w8b1th3s) > 0){
+				i := 0;
+				select{
+				case ch <- w8b1th3s[i]:
+					ok = true
+					// Reduce slice
+					copy(w8b1th3s[i:], w8b1th3s[i+1:])
+					w8b1th3s[len(w8b1th3s)-1] = ack{n: "", toa: 0}
+					w8b1th3s = w8b1th3s[:len(w8b1th3s)-1]
+				default:
+					ok = false
+				}
+			}
+			if !ok {
+				w8b1th3s = append(w8b1th3s, a)
+				continue
+			}
+		}
+		select{
+		case ch <- a:
+			ok = true
+		default:
+			ok = false
+			w8b1th3s = append(w8b1th3s, a)
+			fmt.Println("w8 len", len(w8b1th3s), ok)
+		}
 	}
+}
+
+func end(e chan bool) {
+	e <- true
 }
 
 func remove(slice []int, s int) []int {
@@ -202,24 +242,25 @@ func contains_find(a []ack_list, x string) (bool,int) {
 
 func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 	data, last_len := readFile(file) // data : array of data size of buffer
-	bytes, seqn0,i := 0, 000001, 0
+	bytes, seqn0, i := 0, 000001, 0
 	ch := make(chan ack, 1000)
-	go readpc(pc, ch)
+	en := make(chan bool)
+	go readpc(pc, ch, en)
+	defer end(en)
+
 	var ack_array []ack_list // Initial array with all expected ACKs
-	elt_list := ack_list{0,""}
 
 	for i < len(data){
-		for j := 0; j < cwnd - len(ack_array); j++{ 
+		for j := 0; j < cwnd - len(ack_array); j++{
 			//toSend := make([]byte, 1500)
 			bs := fmt.Sprintf("%06d", seqn0)
-			elt_list := ack_list{i,bs}
+			elt_list := ack_list{index: i, value: bs}
 			ack_array = append(ack_array, elt_list); // configure all elements to send + to send again
 			if (i == len(data)-1){
 				data[i] = data[i][:last_len]
 			}
 			seqn0 ++
 			i ++
-
 		}
 
 		for _, elt := range ack_array {
@@ -253,13 +294,13 @@ func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 					}
 					if (exists){
 						ack_array = ack_array[index+1:]
-					}						
+					}
 			}
 		}
 
 		}
 		bytes += len(data[i])
-	
+
 	pc.WriteTo([]byte("FIN"), add)
 	fmt.Println("Nombre de bytes lus :", bytes)
 	return true
