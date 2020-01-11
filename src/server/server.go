@@ -107,14 +107,14 @@ func testPorts(portMin int, portMax int) {
 	}
 }
 
-func update_time_mesure(new_measure float64, cp conn_param) {
+func update_time_mesure(new_measure float64, cp *conn_param) {
 	cp.RTTVAR = (1-beta)*cp.RTTVAR + beta*math.Abs(cp.SRTT-new_measure)
 	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
 	cp.RTO = cp.SRTT + math.Max(granularity, K*cp.RTTVAR)
 }
 
 
-func cwnd_evolution (flag int, seq_failed int, cp conn_param){
+func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 	/*
 		Function that will deal with the evolution of our congestion window and
 		that will handle the switch from slow start to congestion avoidance and
@@ -132,7 +132,9 @@ func cwnd_evolution (flag int, seq_failed int, cp conn_param){
 		case 0:
 			switch cp.congestion_type{
 				case "SS":
+					fmt.Println("SS WINDOW")
 					cp.cwnd *= 2
+
 				case "CA":
 					cp.cwnd += incrementation_ca
 			}
@@ -213,7 +215,7 @@ func contains_find(a []ack_list, x string) (bool,int) {
         return false,0
 }
 
-func sendFile(file string, pc net.PacketConn, add net.Addr, cp conn_param) bool {
+func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool {
 	data, last_len := readFile(file) // data : array of data size of buffer
 	fmt.Println("Data longeur ",len(data))
 	seqn0, i := 000001, 0
@@ -223,7 +225,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp conn_param) bool 
 
 	for i < len(data){
 		real_size := cp.cwnd - len(ack_array)
-		fmt.Println("Taille de la fenêtre ", cp.cwnd)
+		fmt.Println("Taille de la fenêtre ", *cp)
 		for j := 0; j < real_size; j++{
 			//toSend := make([]byte, 1500)
 			fmt.Println(cp.cwnd - len(ack_array))
@@ -318,7 +320,7 @@ func handleClient(add net.Addr, port int, c chan int64){
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
 		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
-		if sendFile(string(buffer[:n-1]), pc, add, cp){
+		if sendFile(string(buffer[:n-1]), pc, add, &cp){
 			break
 		}
 	}
@@ -371,7 +373,7 @@ func main(){
 				go handleClient(addr, p, ch)
 				s := waitParam{
 					toa: time.Now().UnixNano(),
-					c:   ch,
+					c: ch,
 				}
 				addrWait[add] = s
 				pc.WriteTo([]byte("SYN-ACK"+strconv.Itoa(p)), addr)
