@@ -55,7 +55,7 @@ const K = 4 // (RFC6298)
 type conn_param struct {
 	SRTT int64
 	RTTVAR int64
-	RRO int64
+	RTO int64
 	cwnd int
 	congestion_type string
 }
