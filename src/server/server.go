@@ -265,6 +265,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			}
 
 		for { //Checking ACKs loop
+			exit := 0
 			if (len(ack_array) == 0){ //Ya R, what is done is done
 				fmt.Println("All ACK expected were received")
 				cwnd_evolution(0,-1, cp)
@@ -284,17 +285,24 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 						fmt.Print("Error was found, should resend")
 						i = index
 						cwnd_evolution(1, index, cp)
+						exit = 1
 						break
 					}
 					if (exists){
 						ack_array = ack_array[index+1:]
 					}
-				case <- time.After(cp.RTO): //First etch of timeout
+				//case <- time.After(math.Round(cp.RTO * time.Second): //First etch of timeout
+				case <- time.After(2 * time.Second):
 					fmt.Println("Timed out")
-					cwnd_evolution(1, ack_array[:0].index, cp)
-					cp.RTO = cp.RTO * Pow(2, backoff)
+//					cwnd_evolution(1, ack_array[:0].index, cp)
+					cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
 					backoff ++
+					//todo append thing to send
+					exit = 1
 					break
+			}
+			if (exit == 1){
+				break
 			}
 		}
 
