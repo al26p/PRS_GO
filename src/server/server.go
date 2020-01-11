@@ -283,26 +283,29 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					if (ack_buffer.n == last_ack){
 						fmt.Println("Similar ACKs revoyer.")
 						last_id,_ := strconv.Atoi(ack_buffer.n[3:])
-						toSend := append([]byte(ack_buffer.n[3:]), data[last_id+1]...)
+						toSend := append([]byte(fmt.Sprintf("%06d", last_id+1)), data[last_id+1]...)
+						pc.WriteTo(toSend, add)
 						for{
-							 pc.WriteTo(toSend, add)
-							 select{
-							 case ack_ans, content := <- ch:
-							 	next_id,_ = strconv.Atoi(ack_ans[3:])
-								next_id++
-								fmt.Println("On est au paquet ", next_id)
-								i += next_id
-								cwnd_evolution(1, 1 ,cp) // Congestion avoidance
-								break
-								//time.sleep du RTT
-							}}
-					}
+							select{
+							case ack_ans, _ := <- ch:
+								  to_compare,_ := strconv.Atoi(ack_ans.n[3:])
+									if (to_compare != last_id){
+									next_id,_ = strconv.Atoi(ack_ans.n[3:])
+									fmt.Println("On est au paquet ", next_id)
+									i = next_id + 1
+									cwnd_evolution(1, 1 ,cp) // Congestion avoidance
+									break
+								}
+							//time.sleep du RTT
+						}}
+						break
 					}
 					if (exists){
 						ack_array = ack_array[index+1:]
+						last_ack = ack_buffer.n
 					}
 			}
-		}
+		}}
 
 	fmt.Println("Fin d'envoi")
 	pc.WriteTo([]byte("FIN"), add)
