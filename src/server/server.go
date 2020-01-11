@@ -53,19 +53,18 @@ const granularity = 1// granularity of the clock we'll use (think that time libr
 const K = 4 // (RFC6298)
 
 type conn_param struct {
-	SRTT int64
-	RTTVAR int64
-	RRTO int64
+	SRTT float64
+	RTTVAR float64
+	RTO float64
 	cwnd int
 	congestion_type string
 }
 
-func NewConn_param (r int64) conn_param {
-	r = 0
+func NewConn_param (r float64) conn_param {
 	cp := conn_param{
 		SRTT: r,
 		RTTVAR: r/2,
-		RTO: SRTT + math.Max(granularity, K*RTTVAR),
+		RTO: r + math.Max(granularity, K*(r/2)),
 		cwnd: 1,
 		congestion_type: "SS",
 	}
@@ -108,10 +107,10 @@ func testPorts(portMin int, portMax int) {
 	}
 }
 
-func update_time_mesure(new_measure int64, cp conn_param) {
-	cp.RTTVAR = (1-beta)*RTTVAR + beta*math.Abs(SRTT-new_measure)
-	cp.SRTT = (1-alpha)*SRTT + alpha*new_measure
-	cp.RTO = SRTT + math.Max(granularity, K*RTTVAR)
+func update_time_mesure(new_measure float64, cp conn_param) {
+	cp.RTTVAR = (1-beta)*cp.RTTVAR + beta*math.Abs(cp.SRTT-new_measure)
+	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
+	cp.RTO = cp.SRTT + math.Max(granularity, K*cp.RTTVAR)
 }
 
 
@@ -138,7 +137,7 @@ func cwnd_evolution (flag int, seq_failed int, cp conn_param){
 					cp.cwnd += incrementation_ca
 			}
 		case 1:
-			switch congestion_type{
+			switch cp.congestion_type{
 					case "SS":
 						if (seq_failed > 0){
 								cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1 //index ?
@@ -214,7 +213,7 @@ func contains_find(a []ack_list, x string) (bool,int) {
         return false,0
 }
 
-func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
+func sendFile(file string, pc net.PacketConn, add net.Addr, cp conn_param) bool {
 	data, last_len := readFile(file) // data : array of data size of buffer
 	fmt.Println("Data longeur ",len(data))
 	seqn0, i := 000001, 0
@@ -223,11 +222,11 @@ func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 	var ack_array []ack_list // Initial array with all expected ACKs
 
 	for i < len(data){
-		real_size := cwnd - len(ack_array)
-		fmt.Println("Taille de la fenêtre ", cwnd)
+		real_size := cp.cwnd - len(ack_array)
+		fmt.Println("Taille de la fenêtre ", cp.cwnd)
 		for j := 0; j < real_size; j++{
 			//toSend := make([]byte, 1500)
-			fmt.Println(cwnd - len(ack_array))
+			fmt.Println(cp.cwnd - len(ack_array))
 
 			bs := fmt.Sprintf("%06d", seqn0)
 			elt_list := ack_list{i,bs}
@@ -261,7 +260,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 		for {
 			if (len(ack_array) == 0){
 				fmt.Println("All ACK expected were received")
-				cwnd_evolution(0,-1)
+				cwnd_evolution(0,-1, cp)
 				break
 			}
 			select{
@@ -277,7 +276,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr) bool {
 					if (content == false && len(ack_array) != 0){
 						fmt.Print("Error was found, should resend")
 						i = index
-						cwnd_evolution(1, index)
+						cwnd_evolution(1, index, cp)
 						break
 					}
 					if (exists){
@@ -314,12 +313,12 @@ func handleClient(add net.Addr, port int, c chan int64){
 		fmt.Println("Deleted")
 		return
 	}
-	cp := NewConn_param(rtt)
+	cp := NewConn_param(float64(rtt))
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
 		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
-		if sendFile(string(buffer[:n-1]), pc, add){
+		if sendFile(string(buffer[:n-1]), pc, add, cp){
 			break
 		}
 	}
