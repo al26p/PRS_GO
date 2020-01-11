@@ -217,21 +217,19 @@ func contains_find(a []ack_list, x string) (bool,int) {
 }
 
 func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool {
+	var last_ack = ""
 	data, last_len := readFile(file) // data : array of data size of buffer
 	fmt.Println("Data longeur ",len(data))
 	seqn0, i := 000001, 0
 	ch := make(chan ack, 1000)
 	go readpc(pc, ch)
 	var ack_array []ack_list // Initial array with all expected ACKs
+	var next_id = 0
 	backoff := 1 //backoff when timing out
-
-	for i < len(data){ //each part of data
-		real_size := cp.cwnd - len(ack_array)
-		fmt.Println("Status de la fenêtre ", cp)
-
-		for j := 0; j < real_size; j++{ //preparing batch to send
-			fmt.Println("number of packet to send", cp.cwnd - len(ack_array))
-
+	for i < len(data){
+		fmt.Println("Taille de la fenêtre ", *cp)
+		for j := 0; j < cp.cwnd; j++{
+			//toSend := make([]byte, 1500)
 			bs := fmt.Sprintf("%06d", seqn0)
 			elt_list := ack_list{i,bs}
 			ack_array = append(ack_array, elt_list) // configure all elements to send + to send again
@@ -287,6 +285,25 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 						cwnd_evolution(1, index, cp)
 						exit = 1
 						break
+					}
+
+					if (ack_buffer.n == last_ack){
+						fmt.Println("Similar ACKs revoyer.")
+						last_id,_ := strconv.Atoi(ack_buffer.n[3:])
+						toSend := append([]byte(ack_buffer.n[3:]), data[last_id+1]...)
+						for{
+							 pc.WriteTo(toSend, add)
+							 select{
+							 case ack_ans, content := <- ch:
+							 	next_id,_ = strconv.Atoi(ack_ans[3:])
+								next_id++
+								fmt.Println("On est au paquet ", next_id)
+								i += next_id
+								cwnd_evolution(1, 1 ,cp) // Congestion avoidance
+								break
+								//time.sleep du RTT
+							}}
+					}
 					}
 					if (exists){
 						ack_array = ack_array[index+1:]
