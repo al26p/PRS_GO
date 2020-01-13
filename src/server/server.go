@@ -136,18 +136,20 @@ func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 	fmt.Println("Evolution of cwnd")
 	switch flag {
 		case 0:
-			switch cp.congestion_type{
+			switch (cp.congestion_type){
 				case "SS":
 					fmt.Println("SS WINDOW")
 					cp.cwnd *= 2
 
 				case "CA":
+					fmt.Println("From SS to CA")
 					cp.cwnd += incrementation_ca
 			}
 		case 1:
-			switch cp.congestion_type{
+			switch (cp.congestion_type){
 					case "SS":
 						if (seq_failed > 0){
+							  fmt.Println("To CA")
 								cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1 //index ?
 								cp.congestion_type="CA"
 							}				// case timeout to handle
@@ -288,6 +290,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					if (content == false && len(ack_array) != 0){
 						fmt.Print("Error was found, should resend")
 						i = index
+						ack_array = nil
 						cwnd_evolution(1, index, cp)
 						exit = 1
 						break
@@ -296,22 +299,29 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					if (ack_buffer.n == last_ack){
 						fmt.Println("Similar ACKs revoyer.")
 						last_id,_ := strconv.Atoi(ack_buffer.n[3:])
-						toSend := append([]byte(fmt.Sprintf("%06d", last_id+1)), data[last_id+1]...)
+						toSend := append([]byte(fmt.Sprintf("%06d", last_id+1)), data[last_id]...)
 						pc.WriteTo(toSend, add)
-						for{
+						for {
+							fexit := false
 							select{
 							case ack_ans, _ := <- ch:
 								  to_compare,_ := strconv.Atoi(ack_ans.n[3:])
 									if (to_compare != last_id){
 									next_id,_ = strconv.Atoi(ack_ans.n[3:])
-									fmt.Println("On est au paquet ", next_id)
-									i = next_id + 1
+									fmt.Println("On recommence au paquet ",next_id)
+									i = next_id
+									seqn0 = i+1
+									fexit = true
+									ack_array = nil
 									cwnd_evolution(1, 1 ,cp) // Congestion avoidance
 									break
 								}
 							//time.sleep du RTT
-						}}
-						break
+						}
+						if (fexit) {
+							break
+						}
+					}
 					}
 					if (exists){
 						ack_array = ack_array[index+1:]
@@ -323,7 +333,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					cwnd_evolution(1, ack_array[0].index, cp)
 					cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
 					backoff ++
-					//todo append thing to send
+					ack_list = nil
 					exit = 1
 					break
 			}
