@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 	"math"
+	"regexp"
 )
 
 type void struct {}
@@ -200,12 +201,13 @@ func readFile(file string) ([][]byte, int){
 	return data, m
 }
 
-func readpc(pc net.PacketConn, ch chan ack){
+func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time){
 	for{
 		buffer := make([]byte, 100)
 		n,_,_ := pc.ReadFrom(buffer)
 		if (n > 0){
 		ch <- ack{string(buffer[:n-1]),time.Now().UnixNano()}
+		*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
 	}
 	}
 }
@@ -226,11 +228,13 @@ func contains_find(a []ack_list, x string) (bool,int) {
 
 func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool {
 	var last_ack = ""
+	var log_out = "" //logging will be like : time index buffer_size
 	data, last_len := readFile(file) // data : array of data size of buffer
 	logs("Data longeur ",len(data))
 	seqn0, i := 000001, 0
 	ch := make(chan ack, 1000)
-	go readpc(pc, ch)
+	startlog := time.Now()
+	go readpc(pc, ch, &log_out, startlog)
 	var ack_array []ack_list // Initial array with all expected ACKs
 	var next_id = 0
 	backoff := 1 //backoff when timing out
@@ -256,6 +260,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			logs("Sending", elt.index, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			pc.WriteTo(toSend, add)
+			log_out += "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ack_array)) + " \n"
 			//TODO : trace when sendend to know when timeouts or we can evaluate each rtt
 
 				/*sbuffer := ""
@@ -301,6 +306,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 						last_id,_ := strconv.Atoi(ack_buffer.n[3:])
 						toSend := append([]byte(fmt.Sprintf("%06d", last_id+1)), data[last_id]...)
 						pc.WriteTo(toSend, add)
+						log_out += "* " + time.Now().Sub(startlog).String() + " " + strconv.Itoa(last_id+1) + " 1 \n"
 						for {
 							fexit := false
 							select{
@@ -342,15 +348,26 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			}
 		}}
 
-	logs("Fin d'envoi")
 	pc.WriteTo([]byte("FIN"), add)
+	fmt.Println("Fin d'envoi")
+	log_out += "/ " + time.Now().Sub(startlog).String() + " 999999 0 \n"
+
+	var re = regexp.MustCompile(`([.-z]*) ([0-9]+).([0-9]+)µs ([ -Z]*)`)
+  log_out = re.ReplaceAllString(log_out, `$1 0.$2${3}ms $4`)
+	re = regexp.MustCompile(`([ -z]+)ms([ -z]*)`)
+  log_out = re.ReplaceAllString(log_out, `$1 ms$2`)
+	f, _ := os.Create("log_send_" + time.Now().String())
+	defer f.Close()
+	f.WriteString(log_out)
+	f.Sync()
+
 	return true
 }
 
 
 func handleClient(add net.Addr, port int, c chan int64){
 	defer releasePort(port)
-	defer logs("FIN Transmission")
+	defer fmt.Println("FIN Transmission")
 	pc, err := net.ListenPacket("udp", "0.0.0.0:"+strconv.Itoa(port))
 	if err != nil {
 		log.Fatal(err)
@@ -359,7 +376,7 @@ func handleClient(add net.Addr, port int, c chan int64){
 	var rtt int64
 	select {
 	case rtt =<-c:
-		logs("ok - RTT", rtt, "ns (1ms = 1 000 000ns)")
+		fmt.Println("ok - RTT", rtt, "ns (1ms = 1 000 000ns)")
 		if rtt == 0 {
 			logs("Deleted")
 			return
@@ -373,7 +390,7 @@ func handleClient(add net.Addr, port int, c chan int64){
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
-		logs("handle", port, add,"\n"+string(buffer[:n]), n)
+		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
 		if sendFile(string(buffer[:n-1]), pc, add, &cp){
 			break
 		}
@@ -389,12 +406,12 @@ func main(){
 		port = args[0]
 	}
 
-	logs("Testing ports")
+	fmt.Println("Testing ports")
 	portList = make(map[int]void)
 	testPorts(1000,9999)
-	logs("Initial portList has been set")
+	fmt.Println("Initial portList has been set")
 
-	logs("Launching server")
+	fmt.Println("Launching server")
 
 	pc, err := net.ListenPacket("udp", "0.0.0.0:"+port)
 	if err != nil {
