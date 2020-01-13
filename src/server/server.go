@@ -51,7 +51,7 @@ const R = 0.0
 
 const alpha = 1/8 // (RFC6298)
 const beta = 1/4 // (RFC6298)
-const K = 4 // (RFC6298)
+const K = 8 // (RFC6298)
 
 type conn_param struct {
 	SRTT float64
@@ -142,7 +142,7 @@ func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 					cp.cwnd *= 2
 
 				case "CA":
-					logs("From SS to CA")
+					logs("In CA")
 					cp.cwnd += incrementation_ca
 			}
 		case 1:
@@ -156,10 +156,6 @@ func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 
 					case "CA":
 						cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1
-
-					default:
-						cp.RTO*=2
-						logs("Congestion => increase RTO (by 2)")
 				}
 
 	}
@@ -253,7 +249,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 		}
 
 		for _, elt := range ack_array { //for each in batch
-			logs("Sending", elt.index, "...")
+			logs("Sending", elt.index+1, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			pc.WriteTo(toSend, add)
 			//TODO : trace when sendend to know when timeouts or we can evaluate each rtt
@@ -286,36 +282,51 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 				 logs(ack_array)
 				 logs("Trading with ACK", ack_buffer.n[3:]) //ACK be like ACK000124 so [3:]
 				 exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
+				 logs("Last ACK sent was ", last_ack, "and this one ", ack_buffer.n)
+				 res_buffer,_ := strconv.Atoi(ack_buffer.n[3:])
+				 res_ackarray,_ := strconv.Atoi(ack_array[len(ack_array)-1].value)
 				 // logs(exists)
-					if (content == false && len(ack_array) != 0){
-						fmt.Print("Error was found, should resend")
-						i = index
+					if (len(ack_array) != 0 && content == true &&  res_buffer > res_ackarray){
+						logs("Packet way beyond !")
+						i = res_buffer-1
+						seqn0 = i+1
 						ack_array = nil
 						cwnd_evolution(1, index, cp)
 						exit = 1
+						logs("Envoi du paquet pas réussi")
 						break
 					}
-
-					if (ack_buffer.n == last_ack){
+					received := false
+					for ack_buffer.n == last_ack && !(received){
 						logs("Similar ACKs revoyer.")
 						last_id,_ := strconv.Atoi(ack_buffer.n[3:])
 						toSend := append([]byte(fmt.Sprintf("%06d", last_id+1)), data[last_id]...)
+						logs("Spot error about to send again...packet ", last_id+1)
 						pc.WriteTo(toSend, add)
 						for {
 							fexit := false
 							select{
-							case ack_ans, _ := <- ch:
+							case ack_ans, content := <- ch:
+									logs(content)
 								  to_compare,_ := strconv.Atoi(ack_ans.n[3:])
 									if (to_compare != last_id){
 									next_id,_ = strconv.Atoi(ack_ans.n[3:])
-									logs("On recommence au paquet ",next_id)
+									logs("On recommence au paquet ",next_id+1)
 									i = next_id
 									seqn0 = i+1
 									fexit = true
 									ack_array = nil
+									received = true
+									last_ack = ack_buffer.n
+									logs("Value of i en sortie ",i)
 									cwnd_evolution(1, 1 ,cp) // Congestion avoidance
-									break
-								}
+									break}
+							default:
+								received = false
+								time.Sleep(time.Duration(int(cp.RTO)) * time.Nanosecond)
+								fexit = true
+								break
+
 							//time.sleep du RTT
 						}
 						if (fexit) {
@@ -333,8 +344,11 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					cwnd_evolution(1, ack_array[0].index, cp)
 					cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
 					backoff ++
+					i = ack_array[0].index
+					seqn0 = i + 1
 					ack_array = nil
 					exit = 1
+					fmt.Println(ack_array)
 					break
 			}
 			if (exit == 1){
