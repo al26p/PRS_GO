@@ -72,9 +72,9 @@ func NewConn_param (r float64) conn_param {
 	return cp
 }
 
-func log(v ...interface{}) {
+func logs(v ...interface{}) {
 	if (debug == true){
-		fmt.println(v)
+		fmt.Println(v)
 	}
 }
 
@@ -85,7 +85,7 @@ func getPort() int {
 		delete(portList, k)
 		return k
 	}
-	fmt.Println("Plus de ports disponibles")
+	logs("Plus de ports disponibles")
 	return 0
 }
 
@@ -102,7 +102,7 @@ func testPort(p int) int {
 		pc.Close()
 		return p
 	}else{
-		fmt.Println("erreur avec le port " + port)
+		logs("erreur avec le port " + port)
 		return -1
 	}
 }
@@ -133,23 +133,23 @@ func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 
 		AIMD implementation
 	*/
-	fmt.Println("Evolution of cwnd")
+	logs("Evolution of cwnd")
 	switch flag {
 		case 0:
 			switch (cp.congestion_type){
 				case "SS":
-					fmt.Println("SS WINDOW")
+					logs("SS WINDOW")
 					cp.cwnd *= 2
 
 				case "CA":
-					fmt.Println("From SS to CA")
+					logs("From SS to CA")
 					cp.cwnd += incrementation_ca
 			}
 		case 1:
 			switch (cp.congestion_type){
 					case "SS":
 						if (seq_failed > 0){
-							  fmt.Println("To CA")
+							  logs("To CA")
 								cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)+1 //index ?
 								cp.congestion_type="CA"
 							}				// case timeout to handle
@@ -159,7 +159,7 @@ func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 
 					default:
 						cp.RTO*=2
-						fmt.Println("Congestion => increase RTO (by 2)")
+						logs("Congestion => increase RTO (by 2)")
 				}
 
 	}
@@ -172,7 +172,7 @@ func readFile(file string) ([][]byte, int){
 	absFile, _ := filepath.Abs(file)
 	f, err := os.Open(absFile)
 	if err != nil{
-		fmt.Println("Error while openning", absFile)
+		logs("Error while openning", absFile)
 		return nil, 0
 	}
 	defer f.Close()
@@ -182,14 +182,14 @@ func readFile(file string) ([][]byte, int){
 	for {
 		d := make([]byte, BufferSize)
 		n, _ = f.Read(d)
-		//fmt.Println("Nombre de bytes lus", n)
+		//logs("Nombre de bytes lus", n)
 		if n == 0{
 			break
 		}
 		m = n
 		if err != nil {
 			if err != io.EOF {
-				fmt.Println(err)
+				logs(err)
 				return nil, 0
 			}
 			data = append(data, d)
@@ -227,7 +227,7 @@ func contains_find(a []ack_list, x string) (bool,int) {
 func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool {
 	var last_ack = ""
 	data, last_len := readFile(file) // data : array of data size of buffer
-	fmt.Println("Data longeur ",len(data))
+	logs("Data longeur ",len(data))
 	seqn0, i := 000001, 0
 	ch := make(chan ack, 1000)
 	go readpc(pc, ch)
@@ -235,7 +235,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	var next_id = 0
 	backoff := 1 //backoff when timing out
 	for i < len(data){
-		fmt.Println("Taille de la fenêtre ", *cp)
+		logs("Taille de la fenêtre ", *cp)
 		for j := 0; j < cp.cwnd; j++{
 			//toSend := make([]byte, 1500)
 			bs := fmt.Sprintf("%06d", seqn0)
@@ -253,7 +253,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 		}
 
 		for _, elt := range ack_array { //for each in batch
-			fmt.Println("Sending", elt.index, "...")
+			logs("Sending", elt.index, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			pc.WriteTo(toSend, add)
 			//TODO : trace when sendend to know when timeouts or we can evaluate each rtt
@@ -273,20 +273,20 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 		for { //Checking ACKs loop
 			exit := 0
 			if (len(ack_array) == 0){ //Ya R, what is done is done
-				fmt.Println("All ACK expected were received")
+				logs("All ACK expected were received")
 				cwnd_evolution(0,-1, cp)
 				break
 			}
 			select{
 				case ack_buffer, content := <- ch: // content false => buffer empty
 				backoff = 1 //resetting backoff value
-				 fmt.Println("Getting data from channel")
-				 fmt.Println("Content or no longer content ?", content)
-				 fmt.Println("Waiting from ACKs :")
-				 fmt.Println(ack_array)
-				 fmt.Println("Trading with ACK", ack_buffer.n[3:]) //ACK be like ACK000124 so [3:]
+				 logs("Getting data from channel")
+				 logs("Content or no longer content ?", content)
+				 logs("Waiting from ACKs :")
+				 logs(ack_array)
+				 logs("Trading with ACK", ack_buffer.n[3:]) //ACK be like ACK000124 so [3:]
 				 exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
-				 // fmt.Println(exists)
+				 // logs(exists)
 					if (content == false && len(ack_array) != 0){
 						fmt.Print("Error was found, should resend")
 						i = index
@@ -297,7 +297,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					}
 
 					if (ack_buffer.n == last_ack){
-						fmt.Println("Similar ACKs revoyer.")
+						logs("Similar ACKs revoyer.")
 						last_id,_ := strconv.Atoi(ack_buffer.n[3:])
 						toSend := append([]byte(fmt.Sprintf("%06d", last_id+1)), data[last_id]...)
 						pc.WriteTo(toSend, add)
@@ -308,7 +308,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 								  to_compare,_ := strconv.Atoi(ack_ans.n[3:])
 									if (to_compare != last_id){
 									next_id,_ = strconv.Atoi(ack_ans.n[3:])
-									fmt.Println("On recommence au paquet ",next_id)
+									logs("On recommence au paquet ",next_id)
 									i = next_id
 									seqn0 = i+1
 									fexit = true
@@ -329,11 +329,11 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					}
 				//case <- time.After(math.Round(cp.RTO * time.Second): //First etch of timeout
 			case <- time.After( time.Duration(int(cp.RTO)) * time.Nanosecond):
-					fmt.Println("Timed out - backoff:", backoff)
+					logs("Timed out - backoff:", backoff)
 					cwnd_evolution(1, ack_array[0].index, cp)
 					cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
 					backoff ++
-					ack_list = nil
+					ack_array = nil
 					exit = 1
 					break
 			}
@@ -342,7 +342,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			}
 		}}
 
-	fmt.Println("Fin d'envoi")
+	logs("Fin d'envoi")
 	pc.WriteTo([]byte("FIN"), add)
 	return true
 }
@@ -350,7 +350,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 
 func handleClient(add net.Addr, port int, c chan int64){
 	defer releasePort(port)
-	defer fmt.Println("FIN Transmission")
+	defer logs("FIN Transmission")
 	pc, err := net.ListenPacket("udp", "0.0.0.0:"+strconv.Itoa(port))
 	if err != nil {
 		log.Fatal(err)
@@ -359,21 +359,21 @@ func handleClient(add net.Addr, port int, c chan int64){
 	var rtt int64
 	select {
 	case rtt =<-c:
-		fmt.Println("ok - RTT", rtt, "ns (1ms = 1 000 000ns)")
+		logs("ok - RTT", rtt, "ns (1ms = 1 000 000ns)")
 		if rtt == 0 {
-			fmt.Println("Deleted")
+			logs("Deleted")
 			return
 		}
 
 	case <- time.After(10 * time.Second):
-		fmt.Println("Deleted")
+		logs("Deleted")
 		return
 	}
 	cp := NewConn_param(float64(rtt))
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
-		fmt.Println("handle", port, add,"\n"+string(buffer[:n]), n)
+		logs("handle", port, add,"\n"+string(buffer[:n]), n)
 		if sendFile(string(buffer[:n-1]), pc, add, &cp){
 			break
 		}
@@ -389,12 +389,12 @@ func main(){
 		port = args[0]
 	}
 
-	log("Testing ports")
+	logs("Testing ports")
 	portList = make(map[int]void)
 	testPorts(1000,9999)
-	fmt.Println("Initial portList has been set")
+	logs("Initial portList has been set")
 
-	fmt.Println("Launching server")
+	logs("Launching server")
 
 	pc, err := net.ListenPacket("udp", "0.0.0.0:"+port)
 	if err != nil {
@@ -403,7 +403,7 @@ func main(){
 	defer pc.Close()
 
 	for {
-		fmt.Println("ACK waiting :", len(addrWait))
+		logs("ACK waiting :", len(addrWait))
 		buffer := make([]byte, 1024)
 		_, addr, err := pc.ReadFrom(buffer)
 		if err != nil {
@@ -411,12 +411,12 @@ func main(){
 		}
 		in := string(buffer)
 		add := addr.String()
-		fmt.Println(in ,addr)
+		logs(in ,addr)
 		if strings.Contains(in, "SYN") {
 			for k, v := range addrWait{
-				fmt.Println(k,time.Now().UnixNano()-  v.toa )
+				logs(k,time.Now().UnixNano()-  v.toa )
 				if time.Now().UnixNano() - v.toa > 1000000000{
-					fmt.Println("Deleting", k)
+					logs("Deleting", k)
 					close(v.c)
 					delete(addrWait, k)
 				}
@@ -434,12 +434,12 @@ func main(){
 			}
 
 		}else if el, found := addrWait[add]; strings.Contains(in, "ACK") && found{
-			fmt.Println("Got ACK")
+			logs("Got ACK")
 			el.c <- time.Now().UnixNano() - el.toa //RTT dans la goroutine
 			close(el.c)
 			delete(addrWait, add)
 		}else{
-			fmt.Println(addrWait)
+			logs(addrWait)
 			continue
 		}
 	}
