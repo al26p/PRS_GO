@@ -163,15 +163,18 @@ func cwnd_evolution (flag int, seq_failed int, cp *conn_param){
 }
 
 // https://kgrz.io/reading-files-in-go-an-overview.html
-func readFile(file string) ([][]byte, int){
+func readFile(file string) ([][]byte, int, int64){
 	//file, _ = regexp.MatchString()
 	//file = "coucou "
 	absFile, _ := filepath.Abs(file)
 	f, err := os.Open(absFile)
 	if err != nil{
 		logs("Error while openning", absFile)
-		return nil, 0
+		return nil, 0, 0
 	}
+
+	f_info, _ := f.Stat()
+	f_i := f_info.Size()
 	defer f.Close()
 	data := make([][]byte, 0)
 	n := 0
@@ -187,14 +190,14 @@ func readFile(file string) ([][]byte, int){
 		if err != nil {
 			if err != io.EOF {
 				logs(err)
-				return nil, 0
+				return nil, 0, 0
 			}
 			data = append(data, d)
 			break
 		}
 		data = append(data, d)
 	}
-	return data, m
+	return data, m, f_i
 }
 
 func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time){
@@ -225,7 +228,7 @@ func contains_find(a []ack_list, x string) (bool,int) {
 func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool {
 	var last_ack = ""
 	var log_out = "" //logging will be like : time index buffer_size
-	data, last_len := readFile(file) // data : array of data size of buffer
+	data, last_len, file_info := readFile(file) // data : array of data size of buffer
 	logs("Data longeur ",len(data))
 	seqn0, i := 000001, 0
 	ch := make(chan ack, 1000)
@@ -340,7 +343,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 						}
 					}
 					}
-					if (exists){
+					if (exists && len(ack_array) > 0){
 						ack_array = ack_array[index+1:]
 						last_ack = ack_buffer.n
 					}
@@ -363,8 +366,17 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 		}}
 
 	pc.WriteTo([]byte("FIN"), add)
+	end := time.Now().Sub(startlog)
 	fmt.Println("Fin d'envoi")
-	log_out += "/ " + time.Now().Sub(startlog).String() + " 999999 0 \n"
+
+	log_out += "/ " + end.String() + " 999999 0 \n"
+
+	debit := (float32(file_info)*8 / float32(end / time.Millisecond) ) * 1000
+	fmt.Println("Débit is : ", debit, "o/s")
+	fmt.Println(debit/100000,"Mo/s")
+
+	log_out += "$ " + fmt.Sprintf("%f", debit) + " 999999 0 \n"
+
 
 	var re = regexp.MustCompile(`([.-z]*) ([0-9]+).([0-9]+)µs ([ -Z]*)`)
   log_out = re.ReplaceAllString(log_out, `$1 0.$2${3}ms $4`)
