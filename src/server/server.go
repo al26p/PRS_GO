@@ -39,7 +39,7 @@ var (
 	m void
 )
 
-const debug = true
+const debug = false
 
 const BufferSize = 1494
 
@@ -352,6 +352,9 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					logs("Timed out - backoff:", backoff)
 					cwnd_evolution(1, ack_array[0].index, cp)
 					cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
+					if (cp.RTO > 50000000){
+						cp.RTO = 1000000
+					}
 					backoff ++
 					i = ack_array[0].index
 					seqn0 = i + 1
@@ -373,7 +376,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 
 	debit := (float32(file_info)*8 / float32(end / time.Millisecond) ) * 1000
 	fmt.Println("Débit is : ", debit, "o/s")
-	fmt.Println(debit/100000,"Mo/s")
+	fmt.Println(debit/1000000,"Mo/s")
 
 	log_out += "$ " + fmt.Sprintf("%f", debit) + " 999999 0 \n"
 
