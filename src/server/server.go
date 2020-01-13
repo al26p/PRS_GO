@@ -38,6 +38,8 @@ var (
 	m void
 )
 
+const debug = true
+
 const BufferSize = 1494
 
 const attenuation_coefficient float32 = 0.5
@@ -49,7 +51,6 @@ const R = 0.0
 
 const alpha = 1/8 // (RFC6298)
 const beta = 1/4 // (RFC6298)
-const granularity = 1// granularity of the clock we'll use (think that time library works in ms)
 const K = 4 // (RFC6298)
 
 type conn_param struct {
@@ -64,13 +65,18 @@ func NewConn_param (r float64) conn_param {
 	cp := conn_param{
 		SRTT: r,
 		RTTVAR: r/2,
-		RTO: r + math.Max(granularity, K*(r/2)),
+		RTO: r + K * r/2,
 		cwnd: 1,
 		congestion_type: "SS",
 	}
 	return cp
 }
 
+func log(v ...interface{}) {
+	if (debug == true){
+		fmt.println(v)
+	}
+}
 
 func getPort() int {
 	lock.Lock()
@@ -108,9 +114,9 @@ func testPorts(portMin int, portMax int) {
 }
 
 func update_time_mesure(new_measure float64, cp *conn_param) {
-	cp.RTTVAR = (1-beta)*cp.RTTVAR + beta*math.Abs(cp.SRTT-new_measure)
 	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
-	cp.RTO = cp.SRTT + math.Max(granularity, K*cp.RTTVAR)
+	cp.RTTVAR = (1-beta)*cp.RTTVAR + beta*math.Abs(new_measure-cp.SRTT)
+	cp.RTO = cp.SRTT + K*cp.RTTVAR
 }
 
 
@@ -248,7 +254,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			fmt.Println("Sending", elt.index, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			pc.WriteTo(toSend, add)
-			//TODO : trace when sendend to know when timeouts
+			//TODO : trace when sendend to know when timeouts or we can evaluate each rtt
 
 				/*sbuffer := ""
 				select{
@@ -312,9 +318,9 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 						last_ack = ack_buffer.n
 					}
 				//case <- time.After(math.Round(cp.RTO * time.Second): //First etch of timeout
-				case <- time.After(2 * time.Second):
-					fmt.Println("Timed out")
-//					cwnd_evolution(1, ack_array[:0].index, cp)
+			case <- time.After( time.Duration(int(cp.RTO)) * time.Nanosecond):
+					fmt.Println("Timed out - backoff:", backoff)
+					cwnd_evolution(1, ack_array[0].index, cp)
 					cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
 					backoff ++
 					//todo append thing to send
@@ -326,7 +332,6 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			}
 		}}
 
-	}
 	fmt.Println("Fin d'envoi")
 	pc.WriteTo([]byte("FIN"), add)
 	return true
@@ -374,7 +379,7 @@ func main(){
 		port = args[0]
 	}
 
-	fmt.Println("Testing ports")
+	log("Testing ports")
 	portList = make(map[int]void)
 	testPorts(1000,9999)
 	fmt.Println("Initial portList has been set")

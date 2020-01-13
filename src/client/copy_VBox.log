@@ -19,4 +19,249 @@ VirtualBox VM 5.2.18_SUSE r123745 linux.amd64 (Aug 16 2018 12:00:00) release log
 00:00:01.262428 X Server details: vendor: The X.Org Foundation, release: 11906000, protocol version: 11.0, display string: :1.0
 00:00:01.262434 Using XKB for keycode to scan code conversion
 00:00:01.263814 GUI: UIDesktopWidgetWatchdog::sltHandleHostScreenAvailableGeometryCalculated: Screen 0 work area is actually resized to: 0x0 x 1920x1055
-00:00:01.302918 SUP: Loaded VMMR0.r0 (/usr/lib/virtualbox/VMMR0.r0) at 0xXXXXXXXXXXXXXXXX - ModuleInit at XXXXXXXXXXXXXXXX and ModuleTerm at XX
+00:00:01.302918 SUP: Loaded VMMR0.r0 (/usr/lib/virtualbox/VMMR0.r0) at 0xXXXXXXXXXXXXXXXX - ModuleInit at XXXXXXXXXXXXXXXX and ModuleTerm at XXXXXXXXXXXXXXXX
+00:00:01.302930 SUP: VMMR0EntryEx located at XXXXXXXXXXXXXXXX and VMMR0EntryFast at XXXXXXXXXXXXXXXX
+00:00:01.304945 Guest OS type: 'Debian'
+00:00:01.306227 fHMForced=true - 64-bit guest
+00:00:01.312263 File system of '/machines_virtuelles/Debian-jessie-minimal/Snapshots' (snapshots) is ext4
+00:00:01.312267 File system of '/machines_virtuelles/Debian-jessie-minimal/Snapshots/{d5f76ceb-d538-48cb-b948-9d7b60c87498}.vmdk' is ext4
+00:00:01.328438 Shared clipboard service loaded
+00:00:01.328443 Shared clipboard mode: Bidirectional
+00:00:01.338933 Drag and drop service loaded
+00:00:01.338938 Drag and drop mode: Off
+00:00:01.341264 Guest Control service loaded
+00:00:01.343102 ************************* CFGM dump *************************
+00:00:01.343107 [/] (level 0)
+00:00:01.343115   CSAMEnabled       <integer> = 0x0000000000000001 (1)
+00:00:01.343118   CpuExecutionCap   <integer> = 0x0000000000000064 (100)
+00:00:01.343120   EnablePAE         <integer> = 0x0000000000000000 (0)
+00:00:01.343122   HMEnabled         <integer> = 0x0000000000000001 (1)
+00:00:01.343123   MemBalloonSize    <integer> = 0x0000000000000000 (0)
+00:00:01.343125   Name              <string>  = "Debian-jessie-minimal-tc405-112-07" (cb=35)
+00:00:01.343127   NumCPUs           <integer> = 0x0000000000000001 (1)
+00:00:01.343129   PATMEnabled       <integer> = 0x0000000000000001 (1)
+00:00:01.343130   PageFusionAllowed <integer> = 0x0000000000000000 (0)
+00:00:01.343131   RamHoleSize       <integer> = 0x0000000020000000 (536 870 912, 512 MB)
+00:00:01.343134   RamSize           <integer> = 0x0000000010000000 (268 435 456, 256 MB)
+00:00:01.343137   RawR0Enabled      <integer> = 0x0000000000000001 (1)
+00:00:01.343138   RawR3Enabled      <integer> = 0x0000000000000001 (1)
+00:00:01.343140   TimerMillies      <integer> = 0x000000000000000a (10)
+00:00:01.343141   UUID              <bytes>   = "c9 b8 96 f5 50 ac e7 43 80 b6 b8 77 96 94 7c 1e" (cb=16)
+00:00:01.343147 
+00:00:01.343150 [/CPUM/] (level 1)
+00:00:01.343152   GuestCpuName       <string>  = "host" (cb=5)
+00:00:01.343153   PortableCpuIdLevel <integer> = 0x0000000000000000 (0)
+00:00:01.343155   SpecCtrl           <integer> = 0x0000000000000000 (0)
+00:00:01.343156 
+00:00:01.343159 [/DBGC/] (level 1)
+00:00:01.343160   GlobalInitScript <string>  = "/home/aprats/.config/VirtualBox/dbgc-init" (cb=42)
+00:00:01.343162   HistoryFile      <string>  = "/home/aprats/.config/VirtualBox/dbgc-history" (cb=45)
+00:00:01.343163   LocalInitScript  <string>  = "/home/aprats/VirtualBox VMs/Debian-jessie-minimal-tc405-112-07/dbgc-init" (cb=73)
+00:00:01.343164 
+00:00:01.343165 [/DBGF/] (level 1)
+00:00:01.343166   Path <string>  = "/home/aprats/VirtualBox VMs/Debian-jessie-minimal-tc405-112-07/debug/;/home/aprats/VirtualBox VMs/Debian-jessie-minimal-tc405-112-07/;/home/aprats/" (cb=148)
+00:00:01.343168 
+00:00:01.343168 [/Devices/] (level 1)
+00:00:01.343170 
+00:00:01.343170 [/Devices/8237A/] (level 2)
+00:00:01.343172 
+00:00:01.343173 [/Devices/8237A/0/] (level 3)
+00:00:01.343175   Trusted <integer> = 0x0000000000000001 (1)
+00:00:01.343177 
+00:00:01.343177 [/Devices/VMMDev/] (level 2)
+00:00:01.343179 
+00:00:01.343180 [/Devices/VMMDev/0/] (level 3)
+00:00:01.343182   PCIBusNo      <integer> = 0x0000000000000000 (0)
+00:00:01.343184   PCIDeviceNo   <integer> = 0x0000000000000004 (4)
+00:00:01.343185   PCIFunctionNo <integer> = 0x0000000000000000 (0)
+00:00:01.343186   Trusted       <integer> = 0x0000000000000001 (1)
+00:00:01.343188 
+00:00:01.343188 [/Devices/VMMDev/0/Config/] (level 4)
+00:00:01.343191   GuestCoreDumpDir <string>  = "/machines_virtuelles/Debian-jessie-minimal/Snapshots" (cb=53)
+00:00:01.343192 
+00:00:01.343193 [/Devices/VMMDev/0/LUN#0/] (level 4)
+00:00:01.343195   Driver <string>  = "HGCM" (cb=5)
+00:00:01.343196 
+00:00:01.343197 [/Devices/VMMDev/0/LUN#0/Config/] (level 5)
+00:00:01.343199   Object <integer> = 0x00007fb61c000b60 (140 420 130 540 384)
+00:00:01.343202 
+00:00:01.343202 [/Devices/VMMDev/0/LUN#999/] (level 4)
+00:00:01.343205   Driver <string>  = "MainStatus" (cb=11)
+00:00:01.343206 
+00:00:01.343206 [/Devices/VMMDev/0/LUN#999/Config/] (level 5)
+00:00:01.343209   First   <integer> = 0x0000000000000000 (0)
+00:00:01.343211   Last    <integer> = 0x0000000000000000 (0)
+00:00:01.343212   papLeds <integer> = 0x00007fb644003b08 (140 420 801 641 224)
+00:00:01.343214 
+00:00:01.343215 [/Devices/acpi/] (level 2)
+00:00:01.343216 
+00:00:01.343217 [/Devices/acpi/0/] (level 3)
+00:00:01.343219   PCIBusNo      <integer> = 0x0000000000000000 (0)
+00:00:01.343221   PCIDeviceNo   <integer> = 0x0000000000000007 (7)
+00:00:01.343222   PCIFunctionNo <integer> = 0x0000000000000000 (0)
+00:00:01.343223   Trusted       <integer> = 0x0000000000000001 (1)
+00:00:01.343225 
+00:00:01.343226 [/Devices/acpi/0/Config/] (level 4)
+00:00:01.343228   CpuHotPlug          <integer> = 0x0000000000000000 (0)
+00:00:01.343230   FdcEnabled          <integer> = 0x0000000000000000 (0)
+00:00:01.343232   HostBusPciAddress   <integer> = 0x0000000000000000 (0)
+00:00:01.343233   HpetEnabled         <integer> = 0x0000000000000000 (0)
+00:00:01.343235   IOAPIC              <integer> = 0x0000000000000000 (0)
+00:00:01.343237   IocPciAddress       <integer> = 0x0000000000010000 (65 536)
+00:00:01.343239   NumCPUs             <integer> = 0x0000000000000001 (1)
+00:00:01.343240   Parallel0IoPortBase <integer> = 0x0000000000000000 (0)
+00:00:01.343242   Parallel0Irq        <integer> = 0x0000000000000000 (0)
+00:00:01.343243   Parallel1IoPortBase <integer> = 0x0000000000000000 (0)
+00:00:01.343245   Parallel1Irq        <integer> = 0x0000000000000000 (0)
+00:00:01.343246   Serial0IoPortBase   <integer> = 0x0000000000000000 (0)
+00:00:01.343248   Serial0Irq          <integer> = 0x0000000000000000 (0)
+00:00:01.343249   Serial1IoPortBase   <integer> = 0x0000000000000000 (0)
+00:00:01.343251   Serial1Irq          <integer> = 0x0000000000000000 (0)
+00:00:01.343252   ShowCpu             <integer> = 0x0000000000000000 (0)
+00:00:01.343254   ShowRtc             <integer> = 0x0000000000000000 (0)
+00:00:01.343256   SmcEnabled          <integer> = 0x0000000000000000 (0)
+00:00:01.343258 
+00:00:01.343258 [/Devices/acpi/0/LUN#0/] (level 4)
+00:00:01.343261   Driver <string>  = "ACPIHost" (cb=9)
+00:00:01.343262 
+00:00:01.343262 [/Devices/acpi/0/LUN#0/Config/] (level 5)
+00:00:01.343265 
+00:00:01.343266 [/Devices/ahci/] (level 2)
+00:00:01.343267 
+00:00:01.343268 [/Devices/ahci/0/] (level 3)
+00:00:01.343270   PCIBusNo      <integer> = 0x0000000000000000 (0)
+00:00:01.343272   PCIDeviceNo   <integer> = 0x000000000000000d (13)
+00:00:01.343273   PCIFunctionNo <integer> = 0x0000000000000000 (0)
+00:00:01.343275   Trusted       <integer> = 0x0000000000000001 (1)
+00:00:01.343276 
+00:00:01.343277 [/Devices/ahci/0/Config/] (level 4)
+00:00:01.343279   Bootable  <integer> = 0x0000000000000001 (1)
+00:00:01.343281   PortCount <integer> = 0x0000000000000002 (2)
+00:00:01.343282 
+00:00:01.343282 [/Devices/ahci/0/Config/Port0/] (level 5)
+00:00:01.343285   Hotpluggable <integer> = 0x0000000000000001 (1)
+00:00:01.343286 
+00:00:01.343287 [/Devices/ahci/0/LUN#0/] (level 4)
+00:00:01.343290   Driver <string>  = "VD" (cb=3)
+00:00:01.343291 
+00:00:01.343291 [/Devices/ahci/0/LUN#0/Config/] (level 5)
+00:00:01.343294   BlockCache <integer> = 0x0000000000000001 (1)
+00:00:01.343295   Format     <string>  = "VMDK" (cb=5)
+00:00:01.343297   Mountable  <integer> = 0x0000000000000000 (0)
+00:00:01.343298   Path       <string>  = "/machines_virtuelles/Debian-jessie-minimal/Snapshots/{d5f76ceb-d538-48cb-b948-9d7b60c87498}.vmdk" (cb=97)
+00:00:01.343299   Type       <string>  = "HardDisk" (cb=9)
+00:00:01.343301   UseNewIo   <integer> = 0x0000000000000001 (1)
+00:00:01.343302 
+00:00:01.343303 [/Devices/ahci/0/LUN#0/Config/Parent/] (level 6)
+00:00:01.343306   Format <string>  = "VMDK" (cb=5)
+00:00:01.343307   Path   <string>  = "/machines_virtuelles/Debian-jessie-minimal/Debian-jessie-minimal.vmdk" (cb=70)
+00:00:01.343308 
+00:00:01.343309 [/Devices/ahci/0/LUN#0/Config/Plugins/] (level 6)
+00:00:01.343312 
+00:00:01.343312 [/Devices/ahci/0/LUN#0/Config/Plugins/VDPluginCrypt/] (level 7)
+00:00:01.343316   Path <string>  = "/usr/lib/virtualbox/ExtensionPacks/Oracle_VM_VirtualBox_Extension_Pack/linux.amd64/VDPluginCrypt.so" (cb=100)
+00:00:01.343317 
+00:00:01.343318 [/Devices/ahci/0/LUN#999/] (level 4)
+00:00:01.343320   Driver <string>  = "MainStatus" (cb=11)
+00:00:01.343321 
+00:00:01.343322 [/Devices/ahci/0/LUN#999/Config/] (level 5)
+00:00:01.343325   DeviceInstance        <string>  = "ahci/0" (cb=7)
+00:00:01.343326   First                 <integer> = 0x0000000000000000 (0)
+00:00:01.343328   Last                  <integer> = 0x0000000000000001 (1)
+00:00:01.343330   pConsole              <integer> = 0x00007fb644003320 (140 420 801 639 200)
+00:00:01.343333   papLeds               <integer> = 0x00007fb644003708 (140 420 801 640 200)
+00:00:01.343335   pmapMediumAttachments <integer> = 0x00007fb644003b28 (140 420 801 641 256)
+00:00:01.343337 
+00:00:01.343337 [/Devices/apic/] (level 2)
+00:00:01.343339 
+00:00:01.343340 [/Devices/apic/0/] (level 3)
+00:00:01.343342   Trusted <integer> = 0x0000000000000001 (1)
+00:00:01.343343 
+00:00:01.343344 [/Devices/apic/0/Config/] (level 4)
+00:00:01.343346   IOAPIC  <integer> = 0x0000000000000000 (0)
+00:00:01.343348   Mode    <integer> = 0x0000000000000002 (2)
+00:00:01.343349   NumCPUs <integer> = 0x0000000000000001 (1)
+00:00:01.343350 
+00:00:01.343351 [/Devices/e1000/] (level 2)
+00:00:01.343353 
+00:00:01.343353 [/Devices/e1000/0/] (level 3)
+00:00:01.343356   PCIBusNo      <integer> = 0x0000000000000000 (0)
+00:00:01.343357   PCIDeviceNo   <integer> = 0x0000000000000003 (3)
+00:00:01.343359   PCIFunctionNo <integer> = 0x0000000000000000 (0)
+00:00:01.343360   Trusted       <integer> = 0x0000000000000001 (1)
+00:00:01.343361 
+00:00:01.343362 [/Devices/e1000/0/Config/] (level 4)
+00:00:01.343364   AdapterType    <integer> = 0x0000000000000000 (0)
+00:00:01.343366   CableConnected <integer> = 0x0000000000000001 (1)
+00:00:01.343367   LineSpeed      <integer> = 0x0000000000000000 (0)
+00:00:01.343369   MAC            <bytes>   = "08 00 27 72 22 f5" (cb=6)
+00:00:01.343372 
+00:00:01.343372 [/Devices/e1000/0/LUN#0/] (level 4)
+00:00:01.343375   Driver <string>  = "NAT" (cb=4)
+00:00:01.343376 
+00:00:01.343376 [/Devices/e1000/0/LUN#0/Config/] (level 5)
+00:00:01.343379   AliasMode       <integer> = 0x0000000000000000 (0)
+00:00:01.343381   BootFile        <string>  = "Debian-jessie-minimal-tc405-112-07.pxe" (cb=39)
+00:00:01.343382   DNSProxy        <integer> = 0x0000000000000000 (0)
+00:00:01.343384   Network         <string>  = "10.0.2.0/24" (cb=12)
+00:00:01.343385   PassDomain      <integer> = 0x0000000000000001 (1)
+00:00:01.343387   TFTPPrefix      <string>  = "/home/aprats/.config/VirtualBox/TFTP" (cb=37)
+00:00:01.343388   UseHostResolver <integer> = 0x0000000000000000 (0)
+00:00:01.343389 
+00:00:01.343390 [/Devices/e1000/0/LUN#999/] (level 4)
+00:00:01.343392   Driver <string>  = "MainStatus" (cb=11)
+00:00:01.343393 
+00:00:01.343394 [/Devices/e1000/0/LUN#999/Config/] (level 5)
+00:00:01.343397   First   <integer> = 0x0000000000000000 (0)
+00:00:01.343398   Last    <integer> = 0x0000000000000000 (0)
+00:00:01.343400   papLeds <integer> = 0x00007fb6440039e8 (140 420 801 640 936)
+00:00:01.343401 
+00:00:01.343402 [/Devices/i8254/] (level 2)
+00:00:01.343404 
+00:00:01.343404 [/Devices/i8254/0/] (level 3)
+00:00:01.343407 
+00:00:01.343407 [/Devices/i8254/0/Config/] (level 4)
+00:00:01.343410 
+00:00:01.343410 [/Devices/i8259/] (level 2)
+00:00:01.343412 
+00:00:01.343413 [/Devices/i8259/0/] (level 3)
+00:00:01.343415   Trusted <integer> = 0x0000000000000001 (1)
+00:00:01.343416 
+00:00:01.343417 [/Devices/i8259/0/Config/] (level 4)
+00:00:01.343419 
+00:00:01.343420 [/Devices/ichac97/] (level 2)
+00:00:01.343421 
+00:00:01.343422 [/Devices/ichac97/0/] (level 3)
+00:00:01.343424   PCIBusNo      <integer> = 0x0000000000000000 (0)
+00:00:01.343426   PCIDeviceNo   <integer> = 0x0000000000000005 (5)
+00:00:01.343427   PCIFunctionNo <integer> = 0x0000000000000000 (0)
+00:00:01.343428   Trusted       <integer> = 0x0000000000000001 (1)
+00:00:01.343430 
+00:00:01.343430 [/Devices/ichac97/0/AudioConfig/] (level 4)
+00:00:01.343433 
+00:00:01.343433 [/Devices/ichac97/0/Config/] (level 4)
+00:00:01.343436   Codec <string>  = "STAC9700" (cb=9)
+00:00:01.343437 
+00:00:01.343438 [/Devices/ichac97/0/LUN#0/] (level 4)
+00:00:01.343440   Driver <string>  = "AUDIO" (cb=6)
+00:00:01.343441 
+00:00:01.343442 [/Devices/ichac97/0/LUN#0/AttachedDriver/] (level 5)
+00:00:01.343444   Driver <string>  = "PulseAudio" (cb=11)
+00:00:01.343445 
+00:00:01.343446 [/Devices/ichac97/0/LUN#0/AttachedDriver/Config/] (level 6)
+00:00:01.343449   StreamName <string>  = "Debian-jessie-minimal-tc405-112-07" (cb=35)
+00:00:01.343450 
+00:00:01.343451 [/Devices/ichac97/0/LUN#0/Config/] (level 5)
+00:00:01.343454   DebugEnabled  <integer> = 0x0000000000000000 (0)
+00:00:01.343455   DebugPathOut  <string>  = "" (cb=1)
+00:00:01.343456   DriverName    <string>  = "PulseAudio" (cb=11)
+00:00:01.343457   InputEnabled  <integer> = 0x0000000000000001 (1)
+00:00:01.343458   OutputEnabled <integer> = 0x0000000000000001 (1)
+00:00:01.343460 
+00:00:01.343460 [/Devices/ichac97/0/LUN#1/] (level 4)
+00:00:01.343463   Driver <string>  = "AUDIO" (cb=6)
+00:00:01.343464 
+00:00:01.343464 [/Devices/ichac97/0/LUN#1/AttachedDriver/] (level 5)
+00:00:01.343467   Driver <string>  = "AudioVRDE" (cb=10)
+00:00:01.343468 
+0
