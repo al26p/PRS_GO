@@ -382,7 +382,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
   log_out = re.ReplaceAllString(log_out, `$1 0.$2${3}ms $4`)
 	re = regexp.MustCompile(`([ -z]+)ms([ -z]*)`)
   log_out = re.ReplaceAllString(log_out, `$1 ms$2`)
-	f, _ := os.Create("log_send_" + time.Now().String())
+	f, _ := os.Create("logs/log_send_" + time.Now().String())
 	defer f.Close()
 	f.WriteString(log_out)
 	f.Sync()
