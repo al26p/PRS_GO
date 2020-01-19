@@ -238,6 +238,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	go readpc(pc, ch, &log_out, startlog)
 	var ack_array []ack_list // Initial array with all expected ACKs
 	var next_id = 0
+	var rtt_list = make(map[string]int64)
 	backoff := 1 //backoff when timing out
 	for i < len(data) {
 		logs("Taille de la fenêtre ", *cp)
@@ -247,7 +248,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			elt_list := ack_list{i, bs}
 			ack_array = append(ack_array, elt_list) // configure all elements to send + to send again
 
-			if i == len(data)-1 { // si dermier packet à envoyer
+			if i == len(data)-1 { // si dernier packet à envoyer
 				data[i] = data[i][:last_len]
 				seqn0++
 				i++
@@ -260,6 +261,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 		for _, elt := range ack_array { //for each in batch
 			logs("Sending", elt.index+1, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
+			rtt_list[elt.value] = time.Now().UnixNano()
 			pc.WriteTo(toSend, add)
 			log_out += "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ack_array)) + " \n"
 			//TODO : trace when sendend to know when timeouts or we can evaluate each rtt
@@ -290,7 +292,10 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 				logs("Content or no longer content ?", content)
 				logs("Waiting from ACKs :")
 				logs(ack_array)
-				logs("Trading with ACK", ack_buffer.n[3:])                  //ACK be like ACK000124 so [3:]
+				logs("Trading with ACK", ack_buffer.n[3:]) //ACK be like ACK000124 so [3:]
+				update_time_mesure(float64(ack_buffer.toa-rtt_list[ack_buffer.n[3:]]), cp)
+				logs("RTT for this packet is", ack_buffer.toa-rtt_list[ack_buffer.n[3:]])
+				delete(rtt_list, ack_buffer.n[3:])
 				exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
 				logs("Last ACK sent was ", last_ack, "and this one ", ack_buffer.n)
 				res_buffer, _ := strconv.Atoi(ack_buffer.n[3:])
