@@ -34,24 +34,24 @@ func update_time_mesure(new_measure float64) {
 
 func cwnd_evolution (flag int, seq_failed ...int){
 	/*
-		Function that will deal with the evolution of our congestion window and 
-		that will handle the switch from slow start to congestion avoidance and 
+		Function that will deal with the evolution of our congestion window and
+		that will handle the switch from slow start to congestion avoidance and
 		so recalculate our new cwnd
 
 		flag : indicates whether there was an error (ACK not received) in a RTO
 
 		---- 0 => everything received
-		---- 1 => error 
+		---- 1 => error
 
 		AIMD implementation
-	*/	
+	*/
 	switch flag {
 		case 0:
 			switch congestion_type{
 				case "SS":
 					cwnd *= 2
 				case "CA":
-					cwnd += incrementation_ca	
+					cwnd += incrementation_ca
 			}
 		case 1:
 			switch congestion_type{
@@ -65,7 +65,7 @@ func cwnd_evolution (flag int, seq_failed ...int){
 
 					default:
 						RTO*=2
-						fmt.Println("Congestion => increase RTO (by 2)")	
+						fmt.Println("Congestion => increase RTO (by 2)")
 				}
 
 	}
@@ -78,6 +78,6 @@ func cwnd_evolution (flag int, seq_failed ...int){
 // Define function that will increase cmd
 
 func main() {
-		// Test functions														
+		// Test functions
 		fmt.Println("Fin programme")
 }
