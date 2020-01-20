@@ -117,6 +117,21 @@ func testPorts(portMin int, portMax int) {
 //const beta = 1/4 // (RFC6298)
 //const K = 8 // (RFC6298)
 
+func get_standard_deviation(times_measured []int) float64{
+	somme := 0;
+	var standard_deviation float64;
+	longueur := len(times_measured)
+	for i := 0; i < longueur; i ++{
+		somme += times_measured[i]
+	}
+	var moyenne = somme/longueur;
+	for i:=0; i< longueur; i ++{
+		standard_deviation += math.Pow(float64(times_measured[i]-moyenne), 2);
+	}
+	return standard_deviation/float64(longueur);
+}
+
+
 func update_time_mesure(new_measure float64, cp *conn_param) {
 	cp.RTTVAR = (1-beta)*cp.RTTVAR + beta*math.Abs(new_measure-cp.SRTT)
 	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
