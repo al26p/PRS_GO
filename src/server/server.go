@@ -39,8 +39,8 @@ var (
 )
 
 var debug = false
-
-const BufferSize = 1494
+//1494
+const BufferSize = 9500
 const attenuation_coefficient float32 = 0.5
 const incrementation_ca = 1
 
@@ -118,8 +118,8 @@ func testPorts(portMin int, portMax int) {
 //const K = 8 // (RFC6298)
 
 func update_time_mesure(new_measure float64, cp *conn_param) {
-	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
 	cp.RTTVAR = (1-beta)*cp.RTTVAR + beta*math.Abs(new_measure-cp.SRTT)
+	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
 	cp.RTO = cp.SRTT + K*cp.RTTVAR
 }
 
@@ -202,13 +202,18 @@ func readFile(file string) ([][]byte, int, int64) {
 	return data, m, f_i
 }
 
-func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time) {
+func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time, q chan struct{}) {
 	for {
-		buffer := make([]byte, 100)
-		n, _, _ := pc.ReadFrom(buffer)
-		if n > 0 {
-			ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
-			*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
+		select{
+		case <- q:
+			return
+		default:
+			buffer := make([]byte, 100)
+			n, _, _ := pc.ReadFrom(buffer)
+			if n > 0 {
+				ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
+				*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
+			}
 		}
 	}
 }
@@ -235,7 +240,8 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	seqn0, i := 000001, 0
 	ch := make(chan ack, 1000)
 	startlog := time.Now()
-	go readpc(pc, ch, &log_out, startlog)
+	quit := make(chan struct{})
+	go readpc(pc, ch, &log_out, startlog, quit)
 	var ack_array []ack_list // Initial array with all expected ACKs
 	var next_id = 0
 	var rtt_list = make(map[string]int64)
@@ -322,7 +328,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					for {
 						fexit := false
 						select {
-						case ack_ans, content := <-ch:
+						case ack_ans, _ := <-ch:
 							logs(content)
 							to_compare, _ := strconv.Atoi(ack_ans.n[3:])
 							if to_compare != last_id {
@@ -368,7 +374,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 				seqn0 = i + 1
 				ack_array = nil
 				exit = 1
-				fmt.Println(ack_array)
+				logs(ack_array)
 				break
 			}
 			if exit == 1 {
@@ -398,6 +404,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	f.WriteString(log_out)
 	f.Sync()
 
+	close(quit)
 	return true
 }
 
@@ -428,9 +435,10 @@ func handleClient(add net.Addr, port int, c chan int64) {
 		n, _, _ := pc.ReadFrom(buffer)
 		fmt.Println("handle", port, add, "\n"+string(buffer[:n]), n)
 		if sendFile(string(buffer[:n-1]), pc, add, &cp) {
-			break
+			return
 		}
 	}
+
 }
 
 func main() {
