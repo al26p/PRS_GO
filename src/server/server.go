@@ -40,7 +40,7 @@ var (
 
 var debug = false
 //1494
-const BufferSize = 9500
+const BufferSize = 1494//9500
 const attenuation_coefficient float32 = 0.5
 const incrementation_ca = 1
 
@@ -59,6 +59,7 @@ type conn_param struct {
 	RTO             float64
 	cwnd            int
 	congestion_type string
+	last_rtt				[]float64
 }
 
 func NewConn_param(r float64) conn_param {
@@ -68,6 +69,7 @@ func NewConn_param(r float64) conn_param {
 		RTO:             r + K*r/2,
 		cwnd:            1,
 		congestion_type: "SS",
+		last_rtt:				 []float64{0.0},
 	}
 	return cp
 }
@@ -117,14 +119,14 @@ func testPorts(portMin int, portMax int) {
 //const beta = 1/4 // (RFC6298)
 //const K = 8 // (RFC6298)
 
-func get_standard_deviation(times_measured []int) float64{
-	somme := 0;
+func get_standard_deviation(times_measured []float64) float64{
+	somme := 0.0;
 	var standard_deviation float64;
 	longueur := len(times_measured)
 	for i := 0; i < longueur; i ++{
 		somme += times_measured[i]
 	}
-	var moyenne = somme/longueur;
+	var moyenne = somme/float64(longueur);
 	for i:=0; i< longueur; i ++{
 		standard_deviation += math.Pow(float64(times_measured[i]-moyenne), 2);
 	}
@@ -133,7 +135,10 @@ func get_standard_deviation(times_measured []int) float64{
 
 
 func update_time_mesure(new_measure float64, cp *conn_param) {
-	cp.RTTVAR = (1-beta)*cp.RTTVAR + beta*math.Abs(new_measure-cp.SRTT)
+	copy(cp.last_rtt[1:], cp.last_rtt[0:])
+	cp.last_rtt[0] = new_measure
+	cp.RTTVAR = get_standard_deviation(cp.last_rtt)
+	logs("RTTVAR", cp.RTTVAR)
 	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
 	cp.RTO = cp.SRTT + K*cp.RTTVAR
 }
