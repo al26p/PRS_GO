@@ -39,19 +39,19 @@ var (
 )
 
 var debug = false
-//1494
+var calculate_RTT = false
 const BufferSize = 1494//9500
 const attenuation_coefficient float32 = 0.5
 const incrementation_ca = 1
-
+const REF_VALUE = 10
+const min_wnd = 5
 // Potential RTT/RTO/SRTT evolution
-const R = 0.0
 
 // real initization will be done after first handshake (SYN-ACK -> ACK) will be the R variable (in ms)
 
 const alpha = 1 / 8 // (RFC6298)
 const beta = 1 / 4  // (RFC6298)
-const K = 8         // (RFC6298)
+const K = 1        // (RFC6298)
 
 type conn_param struct {
 	SRTT            float64
@@ -69,7 +69,7 @@ func NewConn_param(r float64) conn_param {
 		RTO:             r + K*r/2,
 		cwnd:            1,
 		congestion_type: "SS",
-		last_rtt:				 []float64{0.0},
+		last_rtt:        []float64{0.0},
 	}
 	return cp
 }
@@ -121,6 +121,7 @@ func testPorts(portMin int, portMax int) {
 
 func get_standard_deviation(times_measured []float64) float64{
 	somme := 0.0;
+	logs("My array length: ",len(times_measured))
 	var standard_deviation float64;
 	longueur := len(times_measured)
 	for i := 0; i < longueur; i ++{
@@ -130,17 +131,36 @@ func get_standard_deviation(times_measured []float64) float64{
 	for i:=0; i< longueur; i ++{
 		standard_deviation += math.Pow(float64(times_measured[i]-moyenne), 2);
 	}
-	return standard_deviation/float64(longueur);
+	return math.Sqrt(standard_deviation/float64(longueur));
+}
+
+func add_to_cp_last_rtt(value float64, cp *conn_param){
+		if (len(cp.last_rtt) < REF_VALUE){
+			if (cp.last_rtt[0] == 0){
+				cp.last_rtt[0] = value
+			}else{
+				cp.last_rtt = append(cp.last_rtt, value);
+	}} else{
+		copy(cp.last_rtt[1:], cp.last_rtt[0:])
+		cp.last_rtt[0] = value
+		cp.RTTVAR =  get_standard_deviation(cp.last_rtt)
+	}
 }
 
 
 func update_time_mesure(new_measure float64, cp *conn_param) {
-	copy(cp.last_rtt[1:], cp.last_rtt[0:])
-	cp.last_rtt[0] = new_measure
-	cp.RTTVAR = get_standard_deviation(cp.last_rtt)
-	logs("RTTVAR", cp.RTTVAR)
+	add_to_cp_last_rtt(new_measure, cp)
 	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
 	cp.RTO = cp.SRTT + K*cp.RTTVAR
+}
+
+func contains_value(arr []float64, str float64) bool {
+   for a:=0; a < len(arr); a ++{
+      if arr[a] == str {
+         return true
+      }
+   }
+   return false
 }
 
 func cwnd_evolution(flag int, seq_failed int, cp *conn_param) {
@@ -268,7 +288,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	backoff := 1 //backoff when timing out
 	for i < len(data) {
 		logs("Taille de la fenêtre ", *cp)
-		for j := 0; j < cp.cwnd; j++ {
+		for j := 0; j < cp.cwnd+min_wnd; j++ {
 			//toSend := make([]byte, 1500)
 			bs := fmt.Sprintf("%06d", seqn0)
 			elt_list := ack_list{i, bs}
@@ -283,7 +303,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			seqn0++
 			i++
 		}
-
+		fmt.Println(ack_array)
 		for _, elt := range ack_array { //for each in batch
 			logs("Sending", elt.index+1, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
@@ -303,7 +323,6 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			}
 			*/
 		}
-
 		for { //Checking ACKs loop
 			exit := 0
 			if len(ack_array) == 0 { //Ya R, what is done is done
@@ -319,7 +338,13 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 				logs("Waiting from ACKs :")
 				logs(ack_array)
 				logs("Trading with ACK", ack_buffer.n[3:]) //ACK be like ACK000124 so [3:]
-				update_time_mesure(float64(ack_buffer.toa-rtt_list[ack_buffer.n[3:]]), cp)
+				//fmt.Println("ACK_BUFFER.TOA : ", ack_buffer.toa)
+				//fmt.Println("RTT LIST ", rtt_list[ack_buffer.n[3:]])
+				if (rtt_list[ack_buffer.n[3:]] != 0){
+					update_time_mesure(float64(ack_buffer.toa-rtt_list[ack_buffer.n[3:]]), cp) // nul germain
+					fmt.Println("RTO : ", cp.RTO)
+
+				}
 				logs("RTT for this packet is", ack_buffer.toa-rtt_list[ack_buffer.n[3:]])
 				delete(rtt_list, ack_buffer.n[3:])
 				exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
@@ -382,13 +407,10 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					last_ack = ack_buffer.n
 				}
 				//case <- time.After(math.Round(cp.RTO * time.Second): //First etch of timeout
-			case <-time.After(time.Duration(int(cp.RTO)) * time.Nanosecond):
+			case <-time.After(time.Duration(int(math.Max((cp.RTO), 100))) * time.Nanosecond):
 				logs("Timed out - backoff:", backoff)
 				cwnd_evolution(1, ack_array[0].index, cp)
 				cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
-				if cp.RTO > 50000000 {
-					cp.RTO = 1000000
-				}
 				backoff++
 				i = ack_array[0].index
 				seqn0 = i + 1
@@ -449,7 +471,7 @@ func handleClient(add net.Addr, port int, c chan int64) {
 		logs("Deleted")
 		return
 	}
-	cp := NewConn_param(float64(rtt))
+	cp := NewConn_param(float64(rtt*1500/20))
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
