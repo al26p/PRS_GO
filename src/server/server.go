@@ -40,7 +40,7 @@ var (
 
 var debug = false
 //1494
-const BufferSize = 1494//9500
+const BufferSize = 1494
 const attenuation_coefficient float32 = 0.5
 const incrementation_ca = 1
 
