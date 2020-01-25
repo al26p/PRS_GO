@@ -17,7 +17,7 @@ BEGIN {
         timeoout ++;
     }
 
-    printf("%6.2f %d %d %d %6.2f %6.2f %d \n", $2, send, received, timedout, received/send, dropped/send, window_size)
+    printf("%6.4f %d %d %d %6.4f %6.4f %d \n", $2, send, received, timedout, received/send, dropped/send, window_size)
 
 
 }

@@ -15,15 +15,15 @@ set size 0.7,0.7
 set output "Window_Size.eps"
 
 # set the x axis
-set xrange [0:30000]
+set xrange [0:300]
 set xlabel "Time (ms)"
-set xtics 0,100,30000
+set xtics 0,50,300
 set mxtics 2
 
 # set the y axis
-set yrange [0:50]
+set yrange [0:20]
 set ylabel "Window Size (1)"
-set ytics 0,5,50
+set ytics 0,5,20
 set mytics 2
 
 # set the legend (boxed, on the bottom)
