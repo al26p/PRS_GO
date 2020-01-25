@@ -8,7 +8,7 @@ BEGIN {
 {
     if($1 == "e") {
         send ++;
-        window_size = $4
+        window_size = $5
     }
     if($1 == "r") {
         received ++;
