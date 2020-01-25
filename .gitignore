@@ -1,3 +1,6 @@
 .idea
 src/server/logs
 src/client/copy*
+1024.rnd
+65536.rnd
+1048576.rnd
