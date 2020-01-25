@@ -1,5 +1,5 @@
 //noinspection GoMultiplePackages
-package main_old
+package main
 
 import (
 	"fmt"
