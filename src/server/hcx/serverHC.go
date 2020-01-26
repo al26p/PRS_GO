@@ -61,12 +61,12 @@ const (
 	RefValue               = 10
 	alpha                  = 1 / 8
 	beta                   = 1 / 4
-	K                      = 4
-	attenuationCoefficient = 1 / 2
-	incrementationCa       = 1
+	K                      = 3
+	attenuationCoefficient = 1 / 3
+	incrementationCa       = 2
 	BufferSize             = 1494
 	minWnd                 = 0
-	maxTimeout 			   = 700000000
+	maxTimeout 			   		 = 700000000
 )
 
 var (
@@ -186,7 +186,7 @@ func cwndEvolution(flag int, seqFailed int, cp *connParam) {
 		case "SS":
 			if seqFailed > 0 {
 				logs("To CA")
-				cp.cwnd = int(float32(cp.cwnd)*attenuationCoefficient) + 1 //index ?
+				cp.cwnd = int(float32(cp.cwnd)*attenuationCoefficient) //index ?
 				cp.congestionType = "CA"
 			} // case timeout to handle
 
@@ -195,6 +195,7 @@ func cwndEvolution(flag int, seqFailed int, cp *connParam) {
 		}
 
 	}
+	cp.cwnd = int(math.Min(float64(cp.cwnd), float64(500)))
 }
 
 func containsFind(a []ackList, x string) (bool, int) {

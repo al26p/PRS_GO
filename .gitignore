@@ -1,4 +1,5 @@
 .idea
+src/server/hcx/logs
 src/server/logs
 src/client/copy*
 1024.rnd
