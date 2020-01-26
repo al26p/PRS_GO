@@ -62,11 +62,11 @@ const (
 	alpha                  = 1 / 8
 	beta                   = 1 / 4
 	K                      = 3
-	attenuationCoefficient = 1 / 3
-	incrementationCa       = 2
+	attenuationCoefficient = 0.5
+	incrementationCa       = 1
 	BufferSize             = 1494
 	minWnd                 = 0
-	maxTimeout 			   		 = 700000000
+	maxTimeout 			   		 = 100000000
 )
 
 var (
@@ -186,16 +186,16 @@ func cwndEvolution(flag int, seqFailed int, cp *connParam) {
 		case "SS":
 			if seqFailed > 0 {
 				logs("To CA")
-				cp.cwnd = int(float32(cp.cwnd)*attenuationCoefficient) //index ?
+				cp.cwnd = 1 //int(float32(cp.cwnd)*attenuationCoefficient) //index ?
 				cp.congestionType = "CA"
 			} // case timeout to handle
 
 		case "CA":
-			cp.cwnd = int(float32(cp.cwnd)*attenuationCoefficient)
+			cp.cwnd = 1//int(float32(cp.cwnd)*attenuationCoefficient)
 		}
 
 	}
-	cp.cwnd = int(math.Min(float64(cp.cwnd), float64(500)))
+	cp.cwnd = int(math.Min(float64(cp.cwnd), float64(300)))
 }
 
 func containsFind(a []ackList, x string) (bool, int) {
@@ -246,6 +246,7 @@ func readFile(file string) ([][]byte, int, int64) {
 }
 
 func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time, q chan struct{}) {
+	lastGet := 0
 	for {
 		select {
 		case <-q:
@@ -254,8 +255,13 @@ func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time, 
 			buffer := make([]byte, 100)
 			n, _, _ := pc.ReadFrom(buffer)
 			if n > 0 {
-				ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
-				*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
+				aa, _ := strconv.Atoi(string(buffer[3:n-1]))
+				if  aa >= lastGet {
+					ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
+					*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
+					lastGet = aa
+					fmt.Println("LAST GET", lastGet)
+				}
 			}
 		}
 	}
@@ -277,7 +283,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *connParam) bool 
 	backoff := 1 //backoff when timing out
 	for i < len(data) {
 		logs("Taille de la fenêtre ", *cp)
-		for j := 0; j < cp.cwnd+minWnd; j++ {
+		for j := 0; j < cp.cwnd+minWnd-len(ackArray); j++ {
 			//toSend := make([]byte, 1500)
 			bs := fmt.Sprintf("%06d", seqn0)
 			eltList := ackList{i, bs}
@@ -303,6 +309,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *connParam) bool 
 			logOut += "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ackArray)) + " \n"
 
 		}
+		updaye := 0
 		for { //Checking ACKs loop
 			exit := 0
 			if len(ackArray) == 0 { //Ya R, what is done is done
@@ -320,10 +327,11 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *connParam) bool 
 				logs("Trading with ACK", ackBuffer.n[3:]) //ACK be like ACK000124 so [3:]
 				//fmt.Println("ACK_BUFFER.TOA : ", ack_buffer.toa)
 				//fmt.Println("RTT LIST ", rtt_list[ack_buffer.n[3:]])
-				if rttList[ackBuffer.n[3:]] != 0 {
+				updaye ++
+				if rttList[ackBuffer.n[3:]] != 0 && updaye > 100{
 					updateTimeMesure(float64(ackBuffer.toa-rttList[ackBuffer.n[3:]]), cp) // nul germain
 					logs("RTO : ", cp.RTO)
-
+					updaye = 0
 				}
 				logs("RTT for this packet is", ackBuffer.toa-rttList[ackBuffer.n[3:]])
 				delete(rttList, ackBuffer.n[3:])
