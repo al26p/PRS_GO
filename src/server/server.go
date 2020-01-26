@@ -1,4 +1,3 @@
-//noinspection GoMultiplePackages
 package main
 
 import (
@@ -39,20 +38,20 @@ var (
 	m        void
 )
 
-var debug = false
+var debug = true
 var calculate_RTT = false
 const BufferSize = 1494//9500
 const attenuation_coefficient float32 = 0.5
 const incrementation_ca = 1
-const REF_VALUE = 10
-const min_wnd = 5
+const REF_VALUE = 5
+const min_wnd = 0
 // Potential RTT/RTO/SRTT evolution
 
 // real initization will be done after first handshake (SYN-ACK -> ACK) will be the R variable (in ms)
 
-const alpha = 1 / 8 // (RFC6298)
-const beta = 1 / 4  // (RFC6298)
-const K = 1        // (RFC6298)
+const alpha = 0.125 // (RFC6298)
+const beta = 0.25  // (RFC6298)
+const K = 4      // (RFC6298)
 
 type conn_param struct {
 	SRTT            float64
@@ -152,7 +151,7 @@ func add_to_cp_last_rtt(value float64, cp *conn_param){
 func update_time_mesure(new_measure float64, cp *conn_param) {
 	add_to_cp_last_rtt(new_measure, cp)
 	cp.SRTT = (1-alpha)*cp.SRTT + alpha*new_measure
-	cp.RTO = cp.SRTT + K*cp.RTTVAR
+	cp.RTO = cp.SRTT+K*cp.RTTVAR
 }
 
 func contains_value(arr []float64, str float64) bool {
@@ -169,12 +168,9 @@ func cwnd_evolution(flag int, seq_failed int, cp *conn_param) {
 		Function that will deal with the evolution of our congestion window and
 		that will handle the switch from slow start to congestion avoidance and
 		so recalculate our new cwnd
-
 		flag : indicates whether there was an error (ACK not received) in a RTO
-
 		---- 0 => everything received
 		---- 1 => error
-
 		AIMD implementation
 	*/
 	logs("Evolution of cwnd")
@@ -194,12 +190,12 @@ func cwnd_evolution(flag int, seq_failed int, cp *conn_param) {
 		case "SS":
 			if seq_failed > 0 {
 				logs("To CA")
-				cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient) + 1 //index ?
+				cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient) //index ?
 				cp.congestion_type = "CA"
 			} // case timeout to handle
 
 		case "CA":
-			cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient) + 1
+			cp.cwnd = int(float32(cp.cwnd)*attenuation_coefficient)
 		}
 
 	}
@@ -244,6 +240,7 @@ func readFile(file string) ([][]byte, int, int64) {
 }
 
 func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time, q chan struct{}) {
+	lastGet := 0
 	for {
 		select{
 		case <- q:
@@ -252,8 +249,12 @@ func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time, 
 			buffer := make([]byte, 100)
 			n, _, _ := pc.ReadFrom(buffer)
 			if n > 0 {
-				ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
-				*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
+				aa, _ := strconv.Atoi(string(buffer[3:n-1]))
+				if aa >= lastGet {
+					ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
+					*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
+					lastGet = aa
+				}
 			}
 		}
 	}
@@ -286,11 +287,9 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	var ack_array []ack_list // Initial array with all expected ACKs
 	var next_id = 0
 	var rtt_list = make(map[string]int64)
-	backoff := 1 //backoff when timing out
 	for i < len(data) {
 		logs("Taille de la fenêtre ", *cp)
 		for j := 0; j < cp.cwnd+min_wnd; j++ {
-			//toSend := make([]byte, 1500)
 			bs := fmt.Sprintf("%06d", seqn0)
 			elt_list := ack_list{i, bs}
 			ack_array = append(ack_array, elt_list) // configure all elements to send + to send again
@@ -304,127 +303,110 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			seqn0++
 			i++
 		}
-		fmt.Println(ack_array)
+
+		fmt.Println(len(ack_array))
+
 		for _, elt := range ack_array { //for each in batch
 			logs("Sending", elt.index+1, "...")
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			rtt_list[elt.value] = time.Now().UnixNano()
 			pc.WriteTo(toSend, add)
 			log_out += "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ack_array)) + " \n"
-			//TODO : trace when sendend to know when timeouts or we can evaluate each rtt
-
-			/*sbuffer := ""
-			select{
-			case <- time.After(1*time.Second):
-					sbuffer = "erreur"
-				case sbuffer = <- ch:
-			}
-			if(strings.Contains(sbuffer, bs)){
-				break
-			}
-			*/
 		}
-		for { //Checking ACKs loop
+
+		for { //Boucle d'écoute
 			exit := 0
+
 			if len(ack_array) == 0 { //Ya R, what is done is done
 				logs("All ACK expected were received")
 				cwnd_evolution(0, -1, cp)
 				break
 			}
+
 			select {
 			case ack_buffer, content := <-ch: // content false => buffer empty
-				backoff = 1 //resetting backoff value
 				logs("Getting data from channel")
 				logs("Content or no longer content ?", content)
 				logs("Waiting from ACKs :")
 				logs(ack_array)
 				logs("Trading with ACK", ack_buffer.n[3:]) //ACK be like ACK000124 so [3:]
-				//fmt.Println("ACK_BUFFER.TOA : ", ack_buffer.toa)
-				//fmt.Println("RTT LIST ", rtt_list[ack_buffer.n[3:]])
+
 				if (rtt_list[ack_buffer.n[3:]] != 0){
 					update_time_mesure(float64(ack_buffer.toa-rtt_list[ack_buffer.n[3:]]), cp) // nul germain
-					fmt.Println("RTO : ", cp.RTO)
-
 				}
+
 				logs("RTT for this packet is", ack_buffer.toa-rtt_list[ack_buffer.n[3:]])
 				delete(rtt_list, ack_buffer.n[3:])
+
 				exists, index := contains_find(ack_array, ack_buffer.n[3:]) // structure from channel (ack)
-				logs("Last ACK sent was ", last_ack, "and this one ", ack_buffer.n)
-				res_buffer, _ := strconv.Atoi(ack_buffer.n[3:])
-				res_ackarray, _ := strconv.Atoi(ack_array[len(ack_array)-1].value)
-				// logs(exists)
-				if len(ack_array) != 0 && content == true && res_buffer > res_ackarray {
-					logs("Packet way beyond !")
-					i = res_buffer - 1
-					seqn0 = i + 1
+
+				seq_recue, _ := strconv.Atoi(ack_buffer.n[3:])
+				seq_max, _ := strconv.Atoi(ack_array[len(ack_array)-1].value)
+
+				if seq_recue > seq_max {
+					i = seq_recue
+					seqn0 = seq_recue + 1
 					ack_array = nil
 					cwnd_evolution(1, index, cp)
-					exit = 1
 					logs("Envoi du paquet pas réussi")
+					exit = 1
 					break
 				}
-				received := false
-				for ack_buffer.n == last_ack && !(received) {
+
+				for ack_buffer.n == last_ack {
 					logs("Similar ACKs revoyer.")
-					last_id, _ := strconv.Atoi(ack_buffer.n[3:])
-					toSend := append([]byte(fmt.Sprintf("%06d", last_id+1)), data[last_id]...)
-					logs("Spot error about to send again...packet ", last_id+1)
+					toSend := append([]byte(fmt.Sprintf("%06d", seq_recue+1)), data[seq_recue]...)
+					logs("Spot error about to send again...packet ", seq_recue+1)
 					pc.WriteTo(toSend, add)
-					log_out += "* " + time.Now().Sub(startlog).String() + " " + strconv.Itoa(last_id+1) + " 1 \n"
+					log_out += "* " + time.Now().Sub(startlog).String() + " " + strconv.Itoa(seq_recue+1) + " 1 \n"
 					for {
 						fexit := false
 						select {
 						case ack_ans, _ := <-ch:
-							logs(content)
-							to_compare, _ := strconv.Atoi(ack_ans.n[3:])
-							if to_compare != last_id {
+							if ack_ans.n != ack_buffer.n {
 								next_id, _ = strconv.Atoi(ack_ans.n[3:])
 								logs("On recommence au paquet ", next_id+1)
 								i = next_id
 								seqn0 = i + 1
 								fexit = true
 								ack_array = nil
-								received = true
-								last_ack = ack_buffer.n
+								last_ack = ack_ans.n
 								logs("Value of i en sortie ", i)
 								cwnd_evolution(1, 1, cp) // Congestion avoidance
 								break
 							}
-						default:
-							received = false
-							time.Sleep(time.Duration(int(cp.RTO)) * time.Nanosecond)
+						case <-time.After(time.Duration(int(math.Max((cp.RTO), 100))) * time.Nanosecond):
 							fexit = true
-							break
-
-							//time.sleep du RTT
+							break	//time.sleep du RTT
 						}
 						if fexit {
 							break
 						}
 					}
+					//FOR EXITED BC CONDITION FALSE
 				}
+
 				if exists && len(ack_array) > 0 {
 					ack_array = ack_array[index+1:]
 					last_ack = ack_buffer.n
 				}
-				//case <- time.After(math.Round(cp.RTO * time.Second): //First etch of timeout
 			case <-time.After(time.Duration(int(math.Max((cp.RTO), 100))) * time.Nanosecond):
-				logs("Timed out - backoff:", backoff)
 				cwnd_evolution(1, ack_array[0].index, cp)
-				cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
-				backoff++
+				//cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
 				i = ack_array[0].index
 				seqn0 = i + 1
 				ack_array = nil
 				exit = 1
 				logs(ack_array)
 				break
-			}
+
+			} // FIN SELECT
 			if exit == 1 {
 				break
 			}
-		}
-	}
+
+	} //FIN BOUCLE ECOUTE
+}//FIN I
 
 	pc.WriteTo([]byte("FIN"), add)
 	end := time.Now().Sub(startlog)
@@ -472,7 +454,7 @@ func handleClient(add net.Addr, port int, c chan int64) {
 		logs("Deleted")
 		return
 	}
-	cp := NewConn_param(float64(rtt*1500/20))
+	cp := NewConn_param(float64(rtt)*125)
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
