@@ -391,6 +391,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					last_ack = ack_buffer.n
 				}
 			case <-time.After(time.Duration(int(math.Max((cp.RTO), 100))) * time.Nanosecond):
+				fmt.Println("Timeout")
 				cwnd_evolution(1, ack_array[0].index, cp)
 				//cp.RTO = cp.RTO * math.Pow(float64(2), float64(backoff))
 				i = ack_array[0].index
@@ -454,7 +455,7 @@ func handleClient(add net.Addr, port int, c chan int64) {
 		logs("Deleted")
 		return
 	}
-	cp := NewConn_param(float64(rtt)*125)
+	cp := NewConn_param(float64(rtt)*150)
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
