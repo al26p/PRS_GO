@@ -1,5 +1,5 @@
 # set the terminal, i.e., the figure format (eps) and font (Helvetica, 20pt)
-set term postscript eps enhanced "Helvetica" 20 
+set term postscript eps enhanced "Helvetica" 20
 
 # reset all options to default, just for precaution
 reset
@@ -12,12 +12,41 @@ set size 0.7,0.7
 ###############
 
 # set the figure name
-set output "Window_Size.eps"
+set output "Window_Size_1.eps"
 
 # set the x axis
 set xrange [0:900]
 set xlabel "Time (ms)"
 set xtics 0,100,900
+set mxtics 2
+
+# set the y axis
+set yrange [0:10]
+set ylabel "Window Size (1)"
+set ytics 0,1,10
+set mytics 5
+
+# set the legend (boxed, on the bottom)
+set key box left width 1 height 0.5 samplen 2
+
+# set the grid (grid lines start from tics on both x and y axis)
+set grid xtics ytics
+
+# plot the data from the log file
+plot "< awk '{print}' client1window.log" u 1:7 t "Client 1" \
+     w l lt 1 lw 3 lc rgb "#cc0000"
+
+###############
+# Window Size #
+###############
+
+# set the figure name
+set output "Window_Size_2.eps"
+
+# set the x axis
+set xrange [0:2000]
+set xlabel "Time (ms)"
+set xtics 0,500,2000
 set mxtics 2
 
 # set the y axis
@@ -33,8 +62,8 @@ set key box left width 1 height 0.5 samplen 2
 set grid xtics ytics
 
 # plot the data from the log file
-plot "< awk '{print}' tcp_postprocess.log" u 1:7 t "TCP 0" \
-     w l lt 1 lw 3 lc rgb "#cc0000"
+plot "< awk '{print}' client2window.log" u 1:7 t "Client 2" \
+    w l lt 1 lw 3 lc rgb "#cc0000"
 
 # #########
 # # delay #

@@ -14,7 +14,7 @@ BEGIN {
         received ++;
     }
     if($1 == "e") {
-        timeoout ++;
+        timedout ++;
     }
 
     printf("%6.4f %d %d %d %6.4f %6.4f %d \n", $2, send, received, timedout, received/send, dropped/send, window_size)

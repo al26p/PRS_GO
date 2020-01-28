@@ -252,7 +252,7 @@ func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time, 
 				aa, _ := strconv.Atoi(string(buffer[3:n-1]))
 				if aa >= lastGet {
 					ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
-					*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " \n"
+					*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " " + cp.RTO + " \n"
 					lastGet = aa
 				}
 			}
@@ -311,7 +311,9 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			toSend := append([]byte(elt.value), data[elt.index]...)
 			rtt_list[elt.value] = time.Now().UnixNano()
 			pc.WriteTo(toSend, add)
-			log_out += "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ack_array)) + " \n"
+
+
+			 "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ack_array)) + " " + strconv.Itoa(cp.RTO) + " \n"
 		}
 
 		for { //Boucle d'écoute
@@ -358,7 +360,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					toSend := append([]byte(fmt.Sprintf("%06d", seq_recue+1)), data[seq_recue]...)
 					logs("Spot error about to send again...packet ", seq_recue+1)
 					pc.WriteTo(toSend, add)
-					log_out += "* " + time.Now().Sub(startlog).String() + " " + strconv.Itoa(seq_recue+1) + " 1 \n"
+					log_out += "* " + time.Now().Sub(startlog).String() + " " + strconv.Itoa(seq_recue+1) + " 1 " + strconv.Itoa(cp.RTO) +" \n"
 					for {
 						fexit := false
 						select {
@@ -425,6 +427,8 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	log_out = re.ReplaceAllString(log_out, `$1 0.$2${3}ms $4`)
 	re = regexp.MustCompile(`([ -z]+)ms([ -z]*)`)
 	log_out = re.ReplaceAllString(log_out, `$1 ms$2`)
+	re = regexp.MustCompile(`([0-9])\.([0-9]{3})([0-9]+)s`)
+	log_out = re.ReplaceAllString(log_out, `$1$2.$3 ms`)
 	f, _ := os.Create("logs/log_send_" + file + "_" + time.Now().String())
 	defer f.Close()
 	f.WriteString(log_out)
