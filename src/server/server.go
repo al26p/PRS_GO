@@ -455,7 +455,7 @@ func handleClient(add net.Addr, port int, c chan int64) {
 		logs("Deleted")
 		return
 	}
-	cp := NewConn_param(float64(rtt)*150)
+	cp := NewConn_param(float64(rtt)*175)
 	for {
 		buffer := make([]byte, 1024)
 		n, _, _ := pc.ReadFrom(buffer)
