@@ -33,7 +33,7 @@ set key box left width 1 height 0.5 samplen 2
 set grid xtics ytics
 
 # plot the data from the log file
-plot "< awk '{print}' client1window.log" u 1:7 t "Client 1" \
+plot "< awk '{print}' client1window.log" u 1:5 t "Client 1" \
      w l lt 1 lw 3 lc rgb "#cc0000"
 
 ###############
@@ -62,39 +62,68 @@ set key box left width 1 height 0.5 samplen 2
 set grid xtics ytics
 
 # plot the data from the log file
-plot "< awk '{print}' client2window.log" u 1:7 t "Client 2" \
+plot "< awk '{print}' client2window.log" u 1:5 t "Client 2" \
     w l lt 1 lw 3 lc rgb "#cc0000"
 
-# #########
-# # delay #
-# #########
-#
-# # set the figure name
-# set output "onetcp_delay.eps"
-#
-# # set the x axis
-# set xrange [0:100]
-# set xlabel "Time (s)"
-# set xtics 0,20,100
-# set mxtics 2
-#
-# # set the y axis
-# set yrange [0:500]
-# set ylabel "Delay (ms)"
-# set ytics 0,100,500
-# set mytics 2
-#
-# # set the legend (boxed, on the bottom)
-# set key box left width 1 height 0.5 samplen 2
-#
-# # set the grid (grid lines start from tics on both x and y axis)
-# set grid xtics ytics
-#
-# # plot the data from the log file
-# plot "< awk '$2 == 0 {print}' onetcp_postprocess.log" u 1:($5*1000) t "TCP 0" \
-#      w l lt 1 lw 3 lc rgb "#cc0000"
-#
-#
+#########
+# RTO 1 #
+#########
+
+# set the figure name
+set output "RTO_client1.eps"
+
+# set the x axis
+set xrange [0:2000]
+set xlabel "Time (s)"
+set xtics 0,500,2000
+set mxtics 2
+
+# set the y axis
+set yrange [0:300]
+set ylabel "RTO (ms)"
+set ytics 0,50,300
+set mytics 2
+
+# set the legend (boxed, on the bottom)
+set key box left width 1 height 0.5 samplen 2
+
+# set the grid (grid lines start from tics on both x and y axis)
+set grid xtics ytics
+
+# plot the data from the log file
+plot "< awk '{print}' client1window.log" u 1:($6/1000) t "Client 1" \
+    w l lt 1 lw 3 lc rgb "#cc0000"
+
+#########
+# RTO  2 #
+#########
+
+# set the figure name
+set output "RTO_client2.eps"
+
+# set the x axis
+set xrange [0:2000]
+set xlabel "Time (s)"
+set xtics 0,500,2000
+set mxtics 2
+
+# set the y axis
+set yrange [0:300]
+set ylabel "RTO (ms)"
+set ytics 0,50,300
+set mytics 2
+
+# set the legend (boxed, on the bottom)
+set key box left width 1 height 0.5 samplen 2
+
+# set the grid (grid lines start from tics on both x and y axis)
+set grid xtics ytics
+
+# plot the data from the log file
+plot "< awk '{print}' client2window.log" u 1:($6/1000) t "Client 2" \
+    w l lt 1 lw 3 lc rgb "#cc0000"
+
+
 # #############
 # # window 15 #
 # #############

@@ -38,7 +38,7 @@ var (
 	m        void
 )
 
-var debug = true
+var debug = false
 var calculate_RTT = false
 const BufferSize = 1494//9500
 const attenuation_coefficient float32 = 0.5
@@ -252,7 +252,7 @@ func readpc(pc net.PacketConn, ch chan ack, logfile *string, timelog time.Time, 
 				aa, _ := strconv.Atoi(string(buffer[3:n-1]))
 				if aa >= lastGet {
 					ch <- ack{string(buffer[:n-1]), time.Now().UnixNano()}
-					*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " " + cp.RTO + " \n"
+					*logfile += "r " + time.Now().Sub(timelog).String() + " " + string(buffer[3:n-1]) + " " + strconv.Itoa(n) + " 9999999 \n"
 					lastGet = aa
 				}
 			}
@@ -272,6 +272,10 @@ func contains_find(a []ack_list, x string) (bool, int) {
 		}
 	}
 	return false, 0
+}
+
+func FloatToStr(f float64) string{
+	return fmt.Sprintf("%.12f", f)
 }
 
 func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool {
@@ -312,8 +316,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 			rtt_list[elt.value] = time.Now().UnixNano()
 			pc.WriteTo(toSend, add)
 
-
-			 "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ack_array)) + " " + strconv.Itoa(cp.RTO) + " \n"
+			log_out += "e " + time.Now().Sub(startlog).String() + " " + elt.value + " " + strconv.Itoa(len(ack_array)) + " " + FloatToStr(cp.RTO) + " \n"
 		}
 
 		for { //Boucle d'écoute
@@ -360,7 +363,7 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 					toSend := append([]byte(fmt.Sprintf("%06d", seq_recue+1)), data[seq_recue]...)
 					logs("Spot error about to send again...packet ", seq_recue+1)
 					pc.WriteTo(toSend, add)
-					log_out += "* " + time.Now().Sub(startlog).String() + " " + strconv.Itoa(seq_recue+1) + " 1 " + strconv.Itoa(cp.RTO) +" \n"
+					log_out += "* " + time.Now().Sub(startlog).String() + " " + strconv.Itoa(seq_recue+1) + " 1 " + FloatToStr(cp.RTO) +" \n"
 					for {
 						fexit := false
 						select {
@@ -415,13 +418,13 @@ func sendFile(file string, pc net.PacketConn, add net.Addr, cp *conn_param) bool
 	end := time.Now().Sub(startlog)
 	fmt.Println("Fin d'envoi")
 
-	log_out += "/ " + end.String() + " 999999 0 \n"
+	log_out += "/ " + end.String() + " 999999 9999999 \n"
 
 	debit := (float32(file_info) / float32(end/time.Millisecond)) * 1000
 	fmt.Println("Débit is : ", debit, "o/s")
 	fmt.Println(debit/1000000, "Mo/s")
 
-	log_out += "$ " + fmt.Sprintf("%f", debit) + " 999999 0 \n"
+	log_out += "$ " + fmt.Sprintf("%f", debit) + " 999999 0 999999 \n"
 
 	var re = regexp.MustCompile(`([.-z]*) ([0-9]+).([0-9]+)µs ([ -Z]*)`)
 	log_out = re.ReplaceAllString(log_out, `$1 0.$2${3}ms $4`)
